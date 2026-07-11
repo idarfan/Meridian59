@@ -1,0 +1,138 @@
+# stuff included in blakston makefiles
+
+# defining RELEASE compiles optimized
+# defining NODEBUG omits debugging information
+# defining RETAIL implies release, and also removes debugging strings from client executable 
+
+!ifdef RETAIL
+RELEASE = 1
+NODPRINTFS = 1
+!endif
+
+!ifdef RELEASE
+!undef DEBUG
+OUTDIR=release
+!else
+DEBUG = 1
+OUTDIR=debug
+!endif
+
+# set to get debugging info in executable
+!ifdef NODEBUG
+!undef DEBUGINFO
+!else
+DEBUGINFO = 1
+!endif
+
+# Set source directories
+
+# Subdirectories of components
+
+BBGUNDIR    = $(TOPDIR)\bbgun
+CLIENTDIR   = $(TOPDIR)\clientd3d
+BLAKSERVDIR = $(TOPDIR)\blakserv
+BLAKCOMPDIR = $(TOPDIR)\blakcomp
+ROOMEDITDIR = $(TOPDIR)\roomedit
+DOCDIR      = $(TOPDIR)\doc
+DECODIR     = $(TOPDIR)\blakdeco
+MAKEBGFDIR  = $(TOPDIR)\makebgf
+RESOURCEDIR = $(TOPDIR)\resource
+MODULEDIR   = $(TOPDIR)\module
+UTILDIR     = $(TOPDIR)\util
+SPROCKETDIR = $(TOPDIR)\sprocket
+CLUBDIR     = $(TOPDIR)\club
+
+# 3rd party libraries
+EXTERNALDIR = $(TOPDIR)\external
+LIBARCHIVEDIR = $(EXTERNALDIR)\libarchive
+LIBPNGDIR   = $(EXTERNALDIR)\libpng
+ZLIBDIR     = $(EXTERNALDIR)\zlib
+OPENALDIR   = $(EXTERNALDIR)\openal-soft\openal-soft-1.24.3-bin
+FMTLIBDIR  = $(EXTERNALDIR)\fmtlib
+STBDIR      = $(EXTERNALDIR)\stb
+
+BLAKBINDIR = $(TOPDIR)\bin
+BLAKLIBDIR = $(TOPDIR)\lib
+BLAKINCLUDEDIR = $(TOPDIR)\include
+BLAKSERVRUNDIR = $(TOPDIR)\run\server
+CLIENTRUNDIR = $(TOPDIR)\run\localclient
+
+KODDIR = $(TOPDIR)\kod
+KODINCLUDEDIR = $(KODDIR)\include
+
+PALETTEFILE = $(TOPDIR)\blakston.pal
+
+# compiler specs -- uses multi-threaded DLL C runtime library
+# /FC displays full path of source code file in diagnostics
+# /TP builds C files in C++ mode
+# /WX treats warnings as errors
+# /GR- turns off RTTI
+# /EHsc- turns off exceptions
+# /wd4996  disables warning (deprecated function called)
+# /wd4312  disables warning (cast 32-bit value to 64-bit pointer)
+# /MP enables parallel compiling
+# /MT link with static C runtime library
+# /Zi includes debugging information
+# /DFMT_UNICODE=0 disables Unicode support for fmtlib
+
+CCOMMONFLAGS = -nologo -DBLAK_PLATFORM_WINDOWS -DWIN32 -DFMT_UNICODE=0 \
+             /wd4996 /wd4312 /FC \
+	     -TP -WX -GR- -EHsc- -MP -MT -Zi -std:c++20
+
+CNORMALFLAGS = $(CCOMMONFLAGS) -W2 /Ox
+CDEBUGFLAGS = $(CCOMMONFLAGS) -W3 -DBLAKDEBUG
+CNODEBUGFLAGS = $(CCOMMONFLAGS) -W2 -DBLAKDEBUG
+LINKNORMALFLAGS =/release /debug
+LINKDEBUGFLAGS = /debug
+LINKNODEBUGFLAGS =
+LINKCONSOLEFLAGS = -subsystem:console
+LINKWINDOWSFLAGS = -subsystem:windows
+
+!ifdef DEBUG
+
+!ifdef DEBUGINFO
+CFLAGS = $(CDEBUGFLAGS)
+LINKFLAGS = $(LINKDEBUGFLAGS)
+!else
+CFLAGS = $(CNODEBUGFLAGS)
+LINKFLAGS = $(LINKNODEBUGFLAGS)
+!endif DEBUGINFO
+
+!else
+CFLAGS = $(CNORMALFLAGS)
+LINKFLAGS = $(LINKNORMALFLAGS)
+
+!endif DEBUG
+
+!ifdef DLL
+LINKFLAGS = $(LINKFLAGS) /DLL
+!endif
+
+!ifdef NODPRINTFS
+CFLAGS = $(CFLAGS) -DNODPRINTFS
+!endif NODPRINTFS
+
+# programs
+
+CC     = cl
+MAKE   = nmake -nologo
+LIBPRG = lib -nologo
+LINK   = link -nologo
+RC     = rc -nologo
+
+LEX = $(TOPDIR)\bin\flex -I -i
+YACC = $(TOPDIR)\bin\bison -d -t
+CP = copy /Y
+RM = -del /Q
+RMDIR = -rmdir
+MV = move
+LATEX = latex
+MAKENSIS = "c:\program files (x86)\nsis\makensis.exe"
+
+BC = $(BLAKBINDIR)\bc
+MAKEBGF = $(BLAKBINDIR)\makebgf
+
+# environment variables for compiler
+
+LIB = $(LIB);$(BLAKLIBDIR)
+INCLUDE = $(INCLUDE);$(BLAKINCLUDEDIR);$(LIBARCHIVEDIR);$(LIBPNGDIR);$(ZLIBDIR);$(OPENALDIR)\include;$(FMTLIBDIR);$(STBDIR);
