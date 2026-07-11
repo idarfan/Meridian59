@@ -867,6 +867,8 @@ void InterfaceDrawElements(HDC hdc)
   }
 
   // Draw a stats area border if the active theme has a border color.
+  // TEMP DEBUG: disabled to test suspected startup crash (c0b3c020)
+#if 0
   COLORREF borderColor = ThemeBorderColor();
   if (borderColor != CLR_INVALID)
   {
@@ -874,6 +876,7 @@ void InterfaceDrawElements(HDC hdc)
     StatsGetArea(&stat);
     DrawBorder(&stat, GetClosestPaletteIndex(borderColor), NULL);
   }
+#endif
 }
 /****************************************************************************/
 /*
