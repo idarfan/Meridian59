@@ -14,13 +14,18 @@ constants:
 
    include blakston.khd
 
-   % How often we double-check we're in the same room as our master.
+   % How often we double-check our distance to our master.
    % Belt-and-suspenders: Monster's inherited SomethingLeft/GotoMaster only
    % teleport-follows if we happened to be within 3 tiles of the master the
    % instant he left (see monster.kod SomethingLeft) -- if our walk speed
    % can't keep up over a big room, that race is lost and we get left behind.
-   % This timer catches that case unconditionally.
-   MERC_LEASH_INTERVAL = 5000
+   % Native in-room chase (brain.kod MoveToMaster) is also far too slow to be
+   % useful in combat -- it's a normal monster's walk-tick pace, which can
+   % take 10+ seconds to close a real gap.  So this timer snap-teleports us
+   % to the master's side whenever we've fallen more than a short distance
+   % behind, instead of waiting for the slow walk to catch up.
+   MERC_LEASH_INTERVAL = 2000
+   MERC_LEASH_DISTANCE_SQ = 100   % teleport-snap once we're > 10 tiles away
 
 resources:
 
@@ -115,8 +120,10 @@ messages:
    }
 
    LeashTimer()
-   "Periodic safety net: if we somehow ended up in a different room than "
-   "our master (missed SomethingLeft, lag, etc.), catch up unconditionally."
+   "Periodic safety net: if we ended up in a different room than our "
+   "master (missed SomethingLeft, lag, etc.), or fell too far behind for "
+   "the native walk-tick chase to be useful (e.g. during combat), snap "
+   "straight to his side instead of slowly walking the gap down."
    {
       ptLeash = $;
 
@@ -125,7 +132,8 @@ messages:
          return;
       }
 
-      if Send(poMaster,@GetOwner) <> poOwner
+      if (Send(poMaster,@GetOwner) <> poOwner)
+         OR (Send(self,@SquaredDistanceTo,#what=poMaster) > MERC_LEASH_DISTANCE_SQ)
       {
          Send(self,@GotoMaster);
       }
