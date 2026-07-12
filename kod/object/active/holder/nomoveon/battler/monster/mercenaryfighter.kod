@@ -1,0 +1,35 @@
+% Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+% All rights reserved.
+%
+% This software is distributed under a license that is described in
+% the LICENSE file that accompanies it.
+%
+% Meridian is a registered trademark.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Combat-only variant of Mercenary -- follows and fights, never heals.
+% Meant to be paired with a MercenaryHealer bound to the same master.
+MercenaryFighter is Mercenary
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   mercfighter_name_rsc = "mercenary (fighter)"
+
+classvars:
+
+   vrName = mercfighter_name_rsc
+
+   vbCanFight = TRUE
+   vbCanHeal = FALSE
+
+properties:
+
+messages:
+
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -33,10 +33,11 @@ constants:
 
    % Phase 3 (attack / hold / magic)
    MERC_HOLD_DURATION_SECS = 8
-   MERC_MAX_MANA = 50
+   MERC_MAX_MANA = 100
    MERC_MANA_REGEN_TIME = 1000
-   MERC_FIREBALL_MANA_COST = 7
-   MERC_FIREBALL_CHANCE_BASE = 10   % ~1-in-10 per attack tick, see orcwiza.kod
+   MERC_FIREBALL_MANA_COST = 5
+   MERC_FIREBALL_CHANCE_BASE = 3   % ~1-in-3 per attack tick (orcwiza.kod's
+                                   % 1-in-10 read as "barely ever casts" in play)
 
 resources:
 
@@ -46,6 +47,8 @@ resources:
    mercenary_dead_name_rsc = "dead mercenary"
    mercenary_desc_rsc = \
       "An undead mercenary, bound by dark will to serve and protect her master."
+
+   mercenary_hold_rsc = "Your mercenary holds %s%s in place!"
 
 classvars:
 
@@ -60,6 +63,13 @@ classvars:
    viDifficulty = 5
    viSpeed = SPEED_FAST
 
+   % Role flags -- plain Mercenary does both; MercenaryFighter/MercenaryHealer
+   % (separate .kod files, same directory) each flip one off so you can run
+   % a squad with a dedicated healer and a dedicated fighter instead of one
+   % do-everything pet.
+   vbCanFight = TRUE
+   vbCanHeal = TRUE
+
    % Phase 1: just follow the master.  This flag is checked directly by
    % brain.kod's MoveToMaster logic, and Monster's own SomethingLeft/GotoMaster
    % (cross-room teleport-to-master) needs no flag at all -- both are existing
@@ -69,7 +79,7 @@ classvars:
 properties:
 
    ptLeash = $
-   piMana = 50
+   piMana = 100
    ptMana = $
 
 messages:
@@ -133,6 +143,16 @@ messages:
          Send(self,@EngageTarget,#oEnemy=what);
       }
 
+      % Heal the instant master takes a hit, rather than waiting for the
+      % next LeashTimer poll (up to 1s away) -- with a small max-health
+      % pool one hit can be most of his health bar, so reacting to the
+      % event itself instead of polling is the difference between a
+      % timely heal and one that arrives too late.
+      if victim = poMaster
+      {
+         Send(self,@HealMasterIfNeeded);
+      }
+
       propagate;
    }
 
@@ -194,6 +214,11 @@ messages:
    {
       local iThreshold;
 
+      if NOT vbCanHeal
+      {
+         return;
+      }
+
       if poMaster = $ OR NOT IsClass(poMaster,&Player)
       {
          return;
@@ -215,6 +240,11 @@ messages:
    "real monsters -- never a Player, never another Mercenary, never our "
    "own master."
    {
+      if NOT vbCanFight
+      {
+         return;
+      }
+
       if oEnemy = $ OR oEnemy = self OR oEnemy = poMaster
       {
          return;
@@ -232,8 +262,13 @@ messages:
       }
 
       poTarget = oEnemy;
-      Send(self,@EnterStateChase,#target=oEnemy,#actnow=TRUE);
+
+      % Hold first (per spec: root, then wreck), *then* start closing in.
+      % EnterStateChase(actnow=TRUE) runs its attack timer synchronously, so
+      % doing this the other way around meant the first hit could land
+      % before the hold call below even ran.
       Send(self,@TryHoldTarget,#oEnemy=oEnemy);
+      Send(self,@EnterStateChase,#target=oEnemy,#actnow=TRUE);
 
       return;
    }
@@ -241,7 +276,9 @@ messages:
    TryHoldTarget(oEnemy = $)
    "Phase 3 (hold): root the enemy for a clean opening.  Skipped if it's "
    "already held by us or anyone else -- that alone gives us an effective "
-   "cooldown without needing a separate timer/property."
+   "cooldown without needing a separate timer/property. Held monsters get "
+   "no client-visible effect of their own (Hold.kod only shows one for "
+   "Player targets), so tell master directly that it landed."
    {
       local oHold;
 
@@ -263,6 +300,12 @@ messages:
 
       Send(oHold,@DoHold,#what=self,#otarget=oEnemy,#iDurationSecs=MERC_HOLD_DURATION_SECS);
 
+      if poMaster <> $ AND IsClass(poMaster,&Player)
+      {
+         Send(poMaster,@MsgSendUser,#message_rsc=mercenary_hold_rsc,
+              #parm1=Send(oEnemy,@GetCapDef),#parm2=Send(oEnemy,@GetName));
+      }
+
       return;
    }
 
@@ -273,6 +316,11 @@ messages:
    "flings a Fireball too, same pattern as orcwiza.kod's MonsterCastSpell."
    {
       local oSpell, lTargets;
+
+      if NOT vbCanFight
+      {
+         return FALSE;
+      }
 
       if poTarget = $
       {

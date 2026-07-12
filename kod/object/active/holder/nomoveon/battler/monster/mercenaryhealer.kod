@@ -1,0 +1,43 @@
+% Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+% All rights reserved.
+%
+% This software is distributed under a license that is described in
+% the LICENSE file that accompanies it.
+%
+% Meridian is a registered trademark.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Healer-only variant of Mercenary -- follows and heals, never fights.
+% Meant to be paired with a MercenaryFighter bound to the same master.
+% Reuses the Priestess NPC's appearance so she reads as a dedicated
+% support caster rather than the base Mercenary's undead-warrior look.
+MercenaryHealer is Mercenary
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   merchealer_name_rsc = "mercenary (healer)"
+   merchealer_icon_rsc = priestes.bgf
+   merchealer_desc_rsc = \
+      "A mercenary spellcaster, bound to keep her master alive rather than "
+      "fight at his side."
+
+classvars:
+
+   vrName = merchealer_name_rsc
+   vrIcon = merchealer_icon_rsc
+   vrDesc = merchealer_desc_rsc
+
+   vbCanFight = FALSE
+   vbCanHeal = TRUE
+
+properties:
+
+messages:
+
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
