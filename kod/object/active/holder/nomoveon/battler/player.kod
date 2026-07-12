@@ -7987,7 +7987,13 @@ messages:
       % Now we need to determine if it's a 'cheap' death where we don't lose stuff.
 
       Send(self,@RemoveAllEnchantments,#report=FALSE);
-      bNo_drop_death = FALSE;
+
+      % Local server customization: never lose items/gold or take death-cost
+      % skill penalties on death, for any cause.  Overrides the normal
+      % chaos-night/newbie-room/token-death checks below entirely (left
+      % in place, just never reached with bNo_drop_death = FALSE anymore).
+      bNo_drop_death = TRUE;
+      piDeathCost = FALSE;
 
       iRoom = Send(poOwner,@GetRoomNum);
 
