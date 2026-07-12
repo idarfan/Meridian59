@@ -1,0 +1,49 @@
+% Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+% All rights reserved.
+%
+% This software is distributed under a license that is described in
+% the LICENSE file that accompanies it.
+%
+% Meridian is a registered trademark.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Ranged-magic-only variant of Mercenary -- never heals, and casts Fireball
+% almost every chase tick instead of the occasional flourish the base class
+% does. Monster.ChaseTimer only advances into melee range when it did NOT
+% cast a spell that tick (see monster.kod ChaseTimer: "if not bCast, move
+% closer") -- so casting nearly every tick means she naturally stays back
+% at range instead of closing to melee, without needing any new movement
+% code of our own.
+MercenaryMage is Mercenary
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   mercmage_name_rsc = "mercenary (mage)"
+   mercmage_icon_rsc = licha.bgf
+   mercmage_desc_rsc = \
+      "A mercenary spellcaster, bound to rain down destructive magic on "
+      "her master's enemies from a safe distance."
+
+classvars:
+
+   vrName = mercmage_name_rsc
+   vrIcon = mercmage_icon_rsc
+   vrDesc = mercmage_desc_rsc
+
+   vbCanFight = TRUE
+   vbCanHeal = FALSE
+
+   viMaxMana = 5000
+   viFireballChanceBase = 1   % ~always casts instead of closing to melee
+
+properties:
+
+messages:
+
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

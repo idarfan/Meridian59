@@ -32,12 +32,14 @@ constants:
    MERC_HEAL_AMOUNT = 50
 
    % Phase 3 (attack / hold / magic)
+   % Mana pool size and cast frequency are classvars (viMaxMana,
+   % viFireballChanceBase below) instead of constants, so subclasses like
+   % MercenaryMage can override them -- a plain "constants:" value baked
+   % into MonsterCastSpell here would stay fixed no matter what a subclass
+   % redeclares, since the method body itself is only compiled once, here.
    MERC_HOLD_DURATION_SECS = 8
-   MERC_MAX_MANA = 100
    MERC_MANA_REGEN_TIME = 1000
    MERC_FIREBALL_MANA_COST = 5
-   MERC_FIREBALL_CHANCE_BASE = 3   % ~1-in-3 per attack tick (orcwiza.kod's
-                                   % 1-in-10 read as "barely ever casts" in play)
 
 resources:
 
@@ -70,6 +72,12 @@ classvars:
    vbCanFight = TRUE
    vbCanHeal = TRUE
 
+   % Mana pool size and Fireball cast frequency -- overridable per subclass.
+   % viFireballChanceBase feeds AdjustedChanceBase; 1 means "cast (almost)
+   % every chase tick" (see MercenaryMage), higher means less often.
+   viMaxMana = 100
+   viFireballChanceBase = 3
+
    % Phase 1: just follow the master.  This flag is checked directly by
    % brain.kod's MoveToMaster logic, and Monster's own SomethingLeft/GotoMaster
    % (cross-room teleport-to-master) needs no flag at all -- both are existing
@@ -87,6 +95,15 @@ messages:
    GetMaxHitPoints()
    {
       return 5000;
+   }
+
+   Constructor()
+   "Seed piMana from viMaxMana, so a subclass overriding viMaxMana (e.g. "
+   "MercenaryMage) gets the bigger pool without needing its own properties "
+   "override."
+   {
+      piMana = viMaxMana;
+      propagate;
    }
 
    BindMaster(oMaster = $)
@@ -332,7 +349,7 @@ messages:
          return FALSE;
       }
 
-      if random(1,Send(self,@AdjustedChanceBase,#base=MERC_FIREBALL_CHANCE_BASE)) <> 1
+      if random(1,Send(self,@AdjustedChanceBase,#base=viFireballChanceBase)) <> 1
       {
          return FALSE;
       }
@@ -370,7 +387,7 @@ messages:
    ManaTimer()
    {
       piMana = piMana + 1;
-      if piMana >= MERC_MAX_MANA
+      if piMana >= viMaxMana
       {
          ptMana = $;
          return;
