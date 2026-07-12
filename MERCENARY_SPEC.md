@@ -121,3 +121,27 @@
 **部署**：`make -f makefile.linux` 編譯成功 → client rsc 同步 → `reload system` 熱重載 → 每次都要重新 `create` + `BindMaster` + `NewHold`（reload 後舊物件會換號或消失，記得先查場上有沒有殘留）。
 
 **驗證方式**：主人自反擊安全（`SomethingAttacked` 模擬呼叫）已用 admin console 二次確認,`poTarget` 維持 `$`。補血/打怪/定身/火球四項**還沒有實機驗證**——admin console 用 `LoseHealth` 模擬扣血沒有觀察到預期效果（原因待查,不影響程式邏輯本身,`LoseHealth` 就是單純 `piHealth = piHealth - amount`,沒有防護判斷），需要你在遊戲裡實際觸發（被打、打怪）來確認。
+
+
+# Phase 4：分工（Fighter/Healer/Mage）+ 場測修法確認
+
+實機驗證通過：跟隨速度、補血、打怪、定身、火球全部確認正常。過程中修了三個場測問題：
+1. 補血從輪詢改成 `SomethingAttacked` 命中當下立即檢查（低血量角色一擊可能就見底，等 1 秒輪詢來不及）
+2. `EngageTarget` 改成先 `TryHoldTarget` 再 `EnterStateChase`（原本反過來，第一下可能已經打出去才補定身）；定身命中時現在會 `MsgSendUser` 通知主人（`Hold.kod` 對 Monster 目標本來就沒有任何視覺回饋）
+3. 火球機率/魔力池數次調整：`viFireballChanceBase` 10→3，`viMaxMana` 50→100（後為分工需要改成 classvar 讓子類別覆寫）
+
+**分工**：`vbCanFight`/`vbCanHeal` 兩個 classvar 控制角色分工，三個子類別：
+- `MercenaryFighter`：`vbCanHeal=FALSE`，維持基底外觀（`lichb.bgf`）
+- `MercenaryHealer`：`vbCanFight=FALSE`，外觀借用 Priestess（`priestes.bgf`）
+- `MercenaryMage`：`vbCanHeal=FALSE`，`viMaxMana=5000`、`viFireballChanceBase=1`（幾乎每次 chase tick 都施法），外觀 `licha.bgf`
+
+**重要技術修正**：`viMaxMana`/`viFireballChanceBase` 原本是 `constants:`（編譯期常數），子類別重新宣告不會影響繼承來的 `MonsterCastSpell`/`ManaTimer` 內部參照（方法只編譯一次，綁死宣告當下的常數值）。改成 `classvars:` 後才能真正被子類別覆寫；`piMana` 改由新增的 `Constructor` 覆寫在建立時從 `viMaxMana` 帶入。
+
+**擊殺獎勵：嘗試後 revert**——一度想在 `SomethingKilled` 給主人 `AddAdvancementPoints`，後來發現 `piAdvancement_points` 不是獎勵，是遊戲的反刷技能節流計數器（超過 `ADVANCEMENT_LIMIT=10` 會擋掉玩家自己真正的技能成長機率，累積到量還會在 `AdvancementTimer` 觸發衰退/atrophy 檢查），等於幫倒忙，已經 revert。**目前佣兵打怪對主人沒有額外技能或金錢回饋，純戰力輔助**，維持 Phase 0 原結論。
+
+**不死雙重保險仍未實作**——她仍然可能被打死，帶她打強怪風險自負。
+
+## 附帶修正（跟佣兵 mod 無關，同一次對話一起處理）
+
+- `player.kod` `Killed()`：強制 `bNo_drop_death=TRUE`、`piDeathCost=FALSE`，死亡不再掉裝備/掉錢、不扣技能（本機個人伺服器客製化，不推 upstream）
+- Sword of the Hunt（`huntsw.kod`）反噬持有者是設計行為，不是 bug：要求 `BaseMaxHealth>60` 且 `Karma>-30`，角色等級不夠會被動扣血甚至致死。用 `GainBaseMaxHealth` 把角色拉過門檻解決，沒有動武器本身邏輯。
