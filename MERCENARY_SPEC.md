@@ -57,3 +57,35 @@
 ## 測試與版控
 - 每 Phase：編譯 → 部署（含 client 同步）→ 重啟 server → admin 生成驗證 → 表格回報
 - 每 Phase 一個 commit：`[merc] Phase N: <摘要>`；本地 mod 不推 upstream
+
+---
+
+# Phase 0 調查結論（已確認，不要重查）
+
+- **基底 class 就用 `Monster`**（`kod/object/active/holder/nomoveon/battler/monster.kod`）。不用另找 pet 特化基底——`Animate`（詔喚不死）法術（`spell/animate.kod`）已經是現成雛型：拿 Skeleton/Zombie/Mummy（都繼承 Monster）當臨時佣兵用，跟隨/打怪/不打玩家全靠 `SetMaster` + 行為旗標達成，沒有另寫 AI。
+- **跟隨**：`AI_MOVE_FOLLOW_MASTER`（`blakston.khd:1478`）旗標由 `brain.kod` 的 `MoveToMaster` 邏輯讀取；換房間跟隨是 `Monster.SomethingLeft`→`GotoMaster()`（monster.kod:933-980），對主人 `NewHold` 傳送過去，都是既有引擎行為，不用新寫。主人死亡重生是否觸發同一路徑：brain.kod 有「mourning the death of his master」的既有概念但沒有完整追完，Phase 1 順便驗證。
+- **補血**：`Send(oTarget,@GainHealthNormal,#amount=X)`，Monster/Player 各自實作、都自動 clamp 上限，`Heal` 法術本身就這樣呼叫（`spell/heal.kod:129`）。Phase 2 直接用。
+- **打怪/定身**：`SomethingAttacked(what,victim,use_weapon)` 廣播可判斷「主人被攻擊」；`Hold` 法術有公開 API `DoHold(what=施法者,otarget=目標,iDurationSecs=$)`（`spell/hold.kod:207`）可直接給 NPC 呼叫，不用重寫定身邏輯。Phase 3 用。
+- **經驗歸屬（重要修正）**：M59 沒有「擊殺 XP 池」，技能成長是每次揮擊/施法當下依機率即時判定，只有 Player 有技能、Monster 沒有。**沒有現成的 credit 轉移機制**，佣兵打怪的技能成長天生不會歸主人——Phase 3 要決定：接受佣兵打怪不產生技能成長（最簡單），或另寫程式碼把技能成長算在 `poMaster` 頭上。
+- **外觀**：`monster/lich.kod` 是「不死＋女性」的現成範例（`viGender = GENDER_FEMALE`, `licha.bgf`/`lichb.bgf`），已借用 `lichb.bgf`／`lichbx.bgf`（死亡圖）。
+- **編譯部署**：`monster/makefile` 的 `BOFS` 清單要手動加檔名，不是自動掃描。**修正舊筆記錯誤**：`scripts/sync-rsc.sh` 這個檔案不存在，實際靠 Linux `makefile.linux` 的 `%.bof:%.kod` rule 自動把 `.rsc` 複製到 `run/server/rsc`；client（Windows 端 `run/localclient/resource`）要手動另外複製一份。
+
+# Phase 1 實作記錄（跟隨，已完成初版，待你場測確認）
+
+**新增檔案**：`kod/object/active/holder/nomoveon/battler/monster/mercenary.kod`
+- `Mercenary is Monster`，`viGender = GENDER_FEMALE`，外觀借用 `lichb.bgf`
+- `GetMaxHitPoints()` 覆寫回傳 5000（經 `Fuzzy()` 隨機化，等同其他怪物的 HP 算法）
+- `viDefault_behavior = AI_MOVE_FOLLOW_MASTER`——靠既有 `ResetBehaviorFlags`/brain.kod 機制跟隨，沒有另寫移動程式碼
+- 新訊息 `BindMaster(oMaster=$)`：呼叫既有的 `Send(self,@SetMaster,#oMaster=oMaster)` + 設 `pbDontDispose=TRUE`，讓 admin console 可以直接綁定主人
+
+**修改**：`monster/makefile` 的 `BOFS` 加入 `mercenary.bof`
+
+**部署驗證**：
+1. `make -f makefile.linux`（在 `kod/` 下）編譯成功，`mercenary.bof`/`.rsc` 已產出並自動複製到 `run/server/{loadkod,rsc}`
+2. 手動把 `mercenary.rsc` 複製到 Windows 端 `run/localclient/resource`（沒有 `sync-rsc.sh` 可用，手動 cp）
+3. maintenance port 執行 `reload system`（save+熱重載 kod，不用整個重啟 server，不會斷玩家連線）成功
+4. `create object Mercenary` → `send object <id> BindMaster oMaster object <角色id>` → `send object <房間id> NewHold what object <id> new_row ... new_col ...` 把佣兵放到角色所在位置，`show object` 確認 `poMaster` 正確、`piBehavior=16`(=AI_MOVE_FOLLOW_MASTER)、`ptBehavior` 計時器已啟動
+
+**待驗證（需要你在遊戲畫面確認）**：走開幾步，觀察 mercenary 是否會自動跟過來；換房間時是否會傳送過去。
+
+**未處理，留給後續 Phase**：不死雙重保險（HP≤0攔截）、每 tick 回血、補血、打怪、定身——皆按規格分階段做。

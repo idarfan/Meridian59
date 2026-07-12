@@ -1,0 +1,71 @@
+% Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+% All rights reserved.
+%
+% This software is distributed under a license that is described in
+% the LICENSE file that accompanies it.
+%
+% Meridian is a registered trademark.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Mercenary is Monster
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   mercenary_name_rsc = "mercenary"
+   mercenary_icon_rsc = lichb.bgf
+   mercenary_dead_icon_rsc = lichbx.bgf
+   mercenary_dead_name_rsc = "dead mercenary"
+   mercenary_desc_rsc = \
+      "An undead mercenary, bound by dark will to serve and protect her master."
+
+classvars:
+
+   vrName = mercenary_name_rsc
+   vrIcon = mercenary_icon_rsc
+   vrDead_icon = mercenary_dead_icon_rsc
+   vrDead_name = mercenary_dead_name_rsc
+   vrDesc = mercenary_desc_rsc
+
+   viGender = GENDER_FEMALE
+   viLevel = 100
+   viDifficulty = 5
+   viSpeed = SPEED_FAST
+
+   % Phase 1: just follow the master.  This flag is checked directly by
+   % brain.kod's MoveToMaster logic, and Monster's own SomethingLeft/GotoMaster
+   % (cross-room teleport-to-master) needs no flag at all -- both are existing
+   % engine behavior, not new code.
+   viDefault_behavior = AI_MOVE_FOLLOW_MASTER
+
+properties:
+
+messages:
+
+   GetMaxHitPoints()
+   {
+      return 5000;
+   }
+
+   BindMaster(oMaster = $)
+   "Admin/spell entry point: bind this mercenary to a master object. "
+   "Actual following is handled entirely by inherited Monster/Brain logic "
+   "once poMaster is set and AI_MOVE_FOLLOW_MASTER is in piBehavior."
+   {
+      if oMaster = $
+      {
+         return FALSE;
+      }
+
+      Send(self,@SetMaster,#oMaster=oMaster);
+      pbDontDispose = TRUE;
+
+      return TRUE;
+   }
+
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
