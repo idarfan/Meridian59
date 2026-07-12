@@ -1542,43 +1542,11 @@ messages:
    }
 
    GetManaCost(who=$,iSpellPower=0)
-   "Returns number of magic points needed to cast spell"
+   "Local server customization: spellcasting costs no mana. Original "
+   "level/Princess-shield-reduction logic below is dead code, kept for "
+   "reference in case this override needs to be reverted."
    {
-      local iCost, oPrincessShield;
-
-      if iSpellpower = 0
-      {
-         Debug("Bad iSpellpower passed to GetManaCost");
-      }
-      
-      iCost = viMana;
-      
-      % don't take anything below 1 unless it already is.
-      if iCost = 0
-      {
-         return 0;
-      }   
-
-      % -1 mana cost for spellpower over 40
-      if iSpellPower > 40
-      {
-         iCost = iCost - 1;
-      }
-      
-      % -2 mana cost for spellpowers over 80
-      if iSpellPower > 80
-      {
-         iCost = iCost - 1;
-      }
-
-      % Receive a cost reduction for being a Princess soldier (Details in `prinshld.kod`)
-      oPrincessShield = Send(who,@FindUsing,#class=&PrincessShield);
-      if oPrincessShield <> $
-      { 
-         iCost = iCost - (iCost * Send(oPrincessShield,@GetSpellManaReduction) + 99) / 100;
-      }
-      
-      return bound(iCost,1,$);
+      return 0;
    }
 
    GetRequisiteStat(who=$)
