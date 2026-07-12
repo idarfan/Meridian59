@@ -26,6 +26,13 @@ constants:
    % behind, instead of waiting for the slow walk to catch up.
    MERC_LEASH_INTERVAL = 1000
    MERC_LEASH_DISTANCE_SQ = 9   % teleport-snap once we're > 3 tiles away
+   MERC_STOP_DISTANCE_SQ = 4    % stop walking closer once within 2 tiles --
+                                % matches spec's stated follow distance.
+                                % Inherited MoveToMaster (monster.kod) has NO
+                                % stopping distance at all -- it walks all the
+                                % way onto the master's exact tile, which is
+                                % how multiple mercenaries ended up stacked on
+                                % the player and blocking movement.
 
    % Phase 2 (heal)
    MERC_HEAL_THRESHOLD_PCT = 70
@@ -106,6 +113,25 @@ messages:
       propagate;
    }
 
+   MoveToMaster()
+   "Override: stop once within MERC_STOP_DISTANCE_SQ of master instead of "
+   "walking all the way onto his exact tile -- the inherited version has no "
+   "stopping distance at all, which is how multiple mercenaries ended up "
+   "stacked on the player and blocking movement."
+   {
+      if poMaster = $
+      {
+         return FALSE;
+      }
+
+      if Send(self,@SquaredDistanceTo,#what=poMaster) <= MERC_STOP_DISTANCE_SQ
+      {
+         return TRUE;
+      }
+
+      propagate;
+   }
+
    BindMaster(oMaster = $)
    "Admin/spell entry point: bind this mercenary to a master object. "
    "Actual following is handled entirely by inherited Monster/Brain logic "
@@ -171,6 +197,38 @@ messages:
       }
 
       propagate;
+   }
+
+   GotoMaster()
+   "Override: land 1 tile off master's exact position instead of exactly "
+   "on top of him -- inherited version (monster.kod) always lands on his "
+   "exact tile, which is how multiple mercenaries all stacked on the "
+   "player and blocked movement. Full reimplementation, not layered on "
+   "top of propagate, since KOD's propagate can't be used as an expression "
+   "to post-process the parent's coordinates."
+   {
+      local oNewRoom;
+
+      if poMaster = $
+      {
+         return;
+      }
+
+      oNewRoom = Send(poMaster,@GetOwner);
+      if oNewRoom = $
+      {
+         return;
+      }
+
+      if (Send(oNewRoom,@CountMonsters,#mastered=TRUE) < 6)
+      {
+         Send(oNewRoom,@NewHold,#what=self,
+              #new_row=Send(poMaster,@GetRow) + Random(-1,1),
+              #new_col=Send(poMaster,@GetCol) + Random(-1,1),
+              #new_angle=Send(poMaster,@GetAngle));
+      }
+
+      return;
    }
 
    SomethingLeft(what = $, iRow=0, iCol=0)
