@@ -187,23 +187,6 @@ messages:
       propagate;
    }
 
-   SomethingKilled(what = $, victim = $, use_weapon = $)
-   "Experience credit (Phase 0 finding): M59 has no kill-XP pool to redirect "
-   "-- skill % increases only ever roll for whoever swung/cast at the "
-   "moment of the hit, and only Players have skills at all, so a monster's "
-   "kills never generate any credit to redirect in the first place. This "
-   "is a simple stand-in reward instead: master gets a few advancement "
-   "points whenever we land the kill, using the same message the game "
-   "itself grants for learning a new skill."
-   {
-      if what = self AND vbCanFight AND poMaster <> $ AND IsClass(poMaster,&Player)
-      {
-         Send(poMaster,@AddAdvancementPoints,#number=4);
-      }
-
-      propagate;
-   }
-
    LeashTimer()
    "Periodic tick (every MERC_LEASH_INTERVAL): (1) stay glued to master -- "
    "snap-teleport if we fell behind, since native walk-tick chase is far "
