@@ -35,7 +35,7 @@ constants:
                                 % the player and blocking movement.
 
    % Phase 2 (heal)
-   MERC_HEAL_THRESHOLD_PCT = 70
+   MERC_HEAL_THRESHOLD_PCT = 80
    MERC_HEAL_AMOUNT = 50
 
    % Phase 3 (attack / hold / magic)
@@ -283,9 +283,13 @@ messages:
    }
 
    HealMasterIfNeeded()
-   "Phase 2: heal master when he's below MERC_HEAL_THRESHOLD_PCT.  Cooldown "
-   "is implicitly MERC_LEASH_INTERVAL since this only runs from LeashTimer; "
-   "GainHealthNormal itself clamps to his max, so no overheal risk."
+   "Phase 2: heal master when he's below MERC_HEAL_THRESHOLD_PCT, and always "
+   "cure poison regardless of HP -- a status ailment, not a HP problem. "
+   "Cooldown is implicitly MERC_LEASH_INTERVAL since this only runs from "
+   "LeashTimer; GainHealthNormal itself clamps to his max, so no overheal "
+   "risk. RemovePoison(#strength=9999) is safe to call even when there's no "
+   "active poison -- piPoisonStrength only matters while PoisonTimer is "
+   "actually running, and that timer clamps it back to 0 defensively anyway."
    {
       local iThreshold;
 
@@ -298,6 +302,8 @@ messages:
       {
          return;
       }
+
+      Send(poMaster,@RemovePoison,#strength=9999);
 
       iThreshold = Send(poMaster,@GetMaxHealth) * MERC_HEAL_THRESHOLD_PCT / 100;
       if Send(poMaster,@GetHealth) >= iThreshold
