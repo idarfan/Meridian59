@@ -95,4 +95,29 @@
 4. `create object Mercenary` → `BindMaster` → `NewHold` 到角色房間/位置
 5. **實機驗收（你確認）**：跟隨速度 OK、換房間會傳送、攻擊她不會還手 ✅
 
-**未處理，留給後續 Phase**：不死雙重保險（HP≤0攔截）、每 tick 回血、補血、打怪、定身、經驗歸屬——皆按規格分階段做。
+**未處理，留給後續 Phase**：不死雙重保險（HP≤0攔截）、每 tick 回血、經驗歸屬——皆按規格分階段做。
+
+# Phase 2+3 實作記錄（補血／打怪／定身／火球，已部署待實機驗收）
+
+你要求一次做完，所以這次把 Phase 2、3 一起寫了，`LeashTimer`（跟隨用的計時器，現在每 1 秒跑一次）順便兼職做補血 tick 和「接手主人正在打的怪」。
+
+**補血（Phase 2）**：`HealMasterIfNeeded`——主人 HP < 70%（`GetMaxHealth`）時 `GainHealthNormal +50`，冷卻等於 leash tick 間隔（1 秒），`GainHealthNormal` 本身會 clamp 上限,不會超補。
+
+**打怪（Phase 3）**：`EngageTarget(oEnemy)` 是唯一進入戰鬥的入口，只接受真正的 Monster（擋掉 Player、擋掉其他 Mercenary、擋掉主人自己）。兩個觸發點：
+- `SomethingAttacked` 覆寫：`what=poMaster`(主人在打怪) 或 `victim=poMaster`(主人被打) 都會呼叫 `EngageTarget`，同時保留「絕不打主人、絕不打任何 Player」的安全檢查
+- `LeashTimer` 輪詢主人的 `poKill_target`（主人目前鎖定的目標），沒在打別的就接手
+
+物理攻擊完全靠繼承的 Monster 戰鬥迴圈（`EnterStateChase`/`EnterStateAttack` 一叫,後面全部原生處理,沒有另寫傷害運算）。
+
+**火球（Phase 3 魔法攻擊）**：覆寫 `MonsterCastSpell`,仿照 `orcwiza.kod`（獸人法師）的寫法,每次攻擊 tick 用 `AdjustedChanceBase` 抽一次機率對 `poTarget` 丟 `Fireball`（SID_FIREBALL）,自己的 `piMana`(50 上限)/`ManaTimer` 回魔,魔力不夠就跳過。這是規格說的「最簡實作即可」。
+
+**定身（Phase 3）**：`TryHoldTarget`——只在剛咬上新目標時嘗試,直接呼叫 `Hold` 法術公開的 `DoHold` API,持續 8 秒。冷卻沒有另外做計時器,靠「目標已被定身就跳過」自然形成~8秒冷卻,足夠用。
+
+**刻意不做的部分（安全考量,不是漏掉）**：
+- 沒有加任何 `AI_FIGHT_*` 旗標,所以規格第三優先序「最近的怪」（純視野自動索敵,不需要主人先出手）**沒有實作**——只有「主人被打」「主人在打」兩個觸發點才會進戰鬥,避免她自己到處嗑怪、拉怪拉過頭
+- 不死雙重保險（HP≤0攔截為1）**還沒做**——這次是真的會被打死,不是防禦性設計疏漏,是因為要做到位得整段複寫 `Monster.AssessDamage`（KOD 的 `propagate` 是敘述句不是運算式,沒辦法「呼叫父類別後攔截回傳值」,只能整段複製改寫,工作量較大,先跳過）。**現階段她可能真的會被打死,帶她打怪前請注意對手強度。**
+- 經驗歸屬：如同 Phase 0 結論,沒有可重用機制,這次也還沒加
+
+**部署**：`make -f makefile.linux` 編譯成功 → client rsc 同步 → `reload system` 熱重載 → 每次都要重新 `create` + `BindMaster` + `NewHold`（reload 後舊物件會換號或消失，記得先查場上有沒有殘留）。
+
+**驗證方式**：主人自反擊安全（`SomethingAttacked` 模擬呼叫）已用 admin console 二次確認,`poTarget` 維持 `$`。補血/打怪/定身/火球四項**還沒有實機驗證**——admin console 用 `LoseHealth` 模擬扣血沒有觀察到預期效果（原因待查,不影響程式邏輯本身,`LoseHealth` 就是單純 `piHealth = piHealth - amount`,沒有防護判斷），需要你在遊戲裡實際觸發（被打、打怪）來確認。

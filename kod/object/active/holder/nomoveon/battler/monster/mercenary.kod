@@ -24,8 +24,19 @@ constants:
    % take 10+ seconds to close a real gap.  So this timer snap-teleports us
    % to the master's side whenever we've fallen more than a short distance
    % behind, instead of waiting for the slow walk to catch up.
-   MERC_LEASH_INTERVAL = 2000
-   MERC_LEASH_DISTANCE_SQ = 100   % teleport-snap once we're > 10 tiles away
+   MERC_LEASH_INTERVAL = 1000
+   MERC_LEASH_DISTANCE_SQ = 9   % teleport-snap once we're > 3 tiles away
+
+   % Phase 2 (heal)
+   MERC_HEAL_THRESHOLD_PCT = 70
+   MERC_HEAL_AMOUNT = 50
+
+   % Phase 3 (attack / hold / magic)
+   MERC_HOLD_DURATION_SECS = 8
+   MERC_MAX_MANA = 50
+   MERC_MANA_REGEN_TIME = 1000
+   MERC_FIREBALL_MANA_COST = 7
+   MERC_FIREBALL_CHANCE_BASE = 10   % ~1-in-10 per attack tick, see orcwiza.kod
 
 resources:
 
@@ -58,6 +69,8 @@ classvars:
 properties:
 
    ptLeash = $
+   piMana = 50
+   ptMana = $
 
 messages:
 
@@ -88,18 +101,36 @@ messages:
    }
 
    SomethingAttacked(what = $, victim = $, use_weapon = $)
-   "Override: never retaliate against our own master, even if he attacks "
-   "us (by accident or otherwise). Monster's default SomethingAttacked "
-   "forwards every hit to poBrain, which will target and fight back "
-   "against whoever hit us -- with no exception for our own master. "
-   "Skip that dispatch entirely for the master-hit-us case; everything "
-   "else (e.g. master being attacked by someone else, needed in Phase 3) "
-   "still propagates normally."
+   "Override: never retaliate against our own master or any Player (spec "
+   "Phase 3: never attack players, not even in self-defense). When a real "
+   "monster attacks our master or our master attacks a monster, engage it "
+   "directly rather than relying on brain.kod's hatred heuristics -- more "
+   "predictable given we deliberately don't set any AI_FIGHT_* flag."
    {
+      % Never fight back against our own master.
       if victim = self AND what = poMaster
       {
          piWalkingEffort = 0;
          return;
+      }
+
+      % Never retaliate against any Player, master or not.
+      if victim = self AND IsClass(what,&Player)
+      {
+         piWalkingEffort = 0;
+         return;
+      }
+
+      % Master attacked a monster -- pile on.
+      if what = poMaster AND victim <> self AND NOT IsClass(victim,&Player)
+      {
+         Send(self,@EngageTarget,#oEnemy=victim);
+      }
+
+      % Master got attacked by a monster -- defend.
+      if victim = poMaster AND NOT IsClass(what,&Player)
+      {
+         Send(self,@EngageTarget,#oEnemy=what);
       }
 
       propagate;
@@ -120,11 +151,13 @@ messages:
    }
 
    LeashTimer()
-   "Periodic safety net: if we ended up in a different room than our "
-   "master (missed SomethingLeft, lag, etc.), or fell too far behind for "
-   "the native walk-tick chase to be useful (e.g. during combat), snap "
-   "straight to his side instead of slowly walking the gap down."
+   "Periodic tick (every MERC_LEASH_INTERVAL): (1) stay glued to master -- "
+   "snap-teleport if we fell behind, since native walk-tick chase is far "
+   "too slow for combat use; (2) heal master if he's hurt; (3) if we're "
+   "not already fighting, pick up whatever master is currently fighting."
    {
+      local oMasterTarget;
+
       ptLeash = $;
 
       if poMaster = $
@@ -138,9 +171,184 @@ messages:
          Send(self,@GotoMaster);
       }
 
+      Send(self,@HealMasterIfNeeded);
+
+      if poTarget = $ AND IsClass(poMaster,&Player)
+      {
+         oMasterTarget = Send(poMaster,@GetKillTarget);
+         if oMasterTarget <> $
+         {
+            Send(self,@EngageTarget,#oEnemy=oMasterTarget);
+         }
+      }
+
       ptLeash = CreateTimer(self,@LeashTimer,MERC_LEASH_INTERVAL);
 
       return;
+   }
+
+   HealMasterIfNeeded()
+   "Phase 2: heal master when he's below MERC_HEAL_THRESHOLD_PCT.  Cooldown "
+   "is implicitly MERC_LEASH_INTERVAL since this only runs from LeashTimer; "
+   "GainHealthNormal itself clamps to his max, so no overheal risk."
+   {
+      local iThreshold;
+
+      if poMaster = $ OR NOT IsClass(poMaster,&Player)
+      {
+         return;
+      }
+
+      iThreshold = Send(poMaster,@GetMaxHealth) * MERC_HEAL_THRESHOLD_PCT / 100;
+      if Send(poMaster,@GetHealth) >= iThreshold
+      {
+         return;
+      }
+
+      Send(poMaster,@GainHealthNormal,#amount=MERC_HEAL_AMOUNT);
+
+      return;
+   }
+
+   EngageTarget(oEnemy = $)
+   "Phase 3: start fighting oEnemy, if it's a legal target.  Only ever "
+   "real monsters -- never a Player, never another Mercenary, never our "
+   "own master."
+   {
+      if oEnemy = $ OR oEnemy = self OR oEnemy = poMaster
+      {
+         return;
+      }
+
+      if NOT IsClass(oEnemy,&Monster) OR IsClass(oEnemy,&Player)
+         OR IsClass(oEnemy,&Mercenary)
+      {
+         return;
+      }
+
+      if poTarget = oEnemy
+      {
+         return;
+      }
+
+      poTarget = oEnemy;
+      Send(self,@EnterStateChase,#target=oEnemy,#actnow=TRUE);
+      Send(self,@TryHoldTarget,#oEnemy=oEnemy);
+
+      return;
+   }
+
+   TryHoldTarget(oEnemy = $)
+   "Phase 3 (hold): root the enemy for a clean opening.  Skipped if it's "
+   "already held by us or anyone else -- that alone gives us an effective "
+   "cooldown without needing a separate timer/property."
+   {
+      local oHold;
+
+      if oEnemy = $
+      {
+         return;
+      }
+
+      oHold = Send(SYS,@FindSpellByNum,#num=SID_HOLD);
+      if oHold = $
+      {
+         return;
+      }
+
+      if Send(oEnemy,@IsEnchanted,#what=oHold)
+      {
+         return;
+      }
+
+      Send(oHold,@DoHold,#what=self,#otarget=oEnemy,#iDurationSecs=MERC_HOLD_DURATION_SECS);
+
+      return;
+   }
+
+   MonsterCastSpell()
+   "Phase 3 (magic attack): simplest possible implementation per spec -- "
+   "physical attack is primary (handled entirely by inherited Monster "
+   "combat once poTarget/STATE_ATTACK is set), this just occasionally "
+   "flings a Fireball too, same pattern as orcwiza.kod's MonsterCastSpell."
+   {
+      local oSpell, lTargets;
+
+      if poTarget = $
+      {
+         return FALSE;
+      }
+
+      if piMana < MERC_FIREBALL_MANA_COST
+      {
+         return FALSE;
+      }
+
+      if random(1,Send(self,@AdjustedChanceBase,#base=MERC_FIREBALL_CHANCE_BASE)) <> 1
+      {
+         return FALSE;
+      }
+
+      piMana = piMana - MERC_FIREBALL_MANA_COST;
+      if piMana < MERC_FIREBALL_MANA_COST AND ptMana = $
+      {
+         ptMana = CreateTimer(self,@ManaTimer,MERC_MANA_REGEN_TIME);
+      }
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_FIREBALL);
+      if oSpell = $
+      {
+         return FALSE;
+      }
+
+      if Send(oSpell,@GetNumSpellTargets) > 0
+         AND NOT Send(poOwner,@LineOfSight,#obj1=self,#obj2=poTarget)
+      {
+         return FALSE;
+      }
+
+      lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=[poTarget]);
+
+      if Send(oSpell,@CanPayMonsterCosts,#who=self,#lTargets=lTargets,#iSpellPower=75)
+         AND Send(poOwner,@ReqSpellCast,#who=self,#oSpell=oSpell,#litems=lTargets)
+      {
+         Send(oSpell,@CastSpell,#who=self,#ltargets=lTargets,#iSpellPower=75);
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   ManaTimer()
+   {
+      piMana = piMana + 1;
+      if piMana >= MERC_MAX_MANA
+      {
+         ptMana = $;
+         return;
+      }
+
+      ptMana = CreateTimer(self,@ManaTimer,MERC_MANA_REGEN_TIME);
+
+      return;
+   }
+
+   Delete()
+   "Clean up our own timers so they don't fire against a deleted object."
+   {
+      if ptLeash <> $
+      {
+         DeleteTimer(ptLeash);
+         ptLeash = $;
+      }
+
+      if ptMana <> $
+      {
+         DeleteTimer(ptMana);
+         ptMana = $;
+      }
+
+      propagate;
    }
 
 end
