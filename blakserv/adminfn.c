@@ -406,7 +406,7 @@ admin_table_type admin_create_table[] =
 	"Create account and user by name, password" },
 	{ AdminCreateDM,      {I,N},   false, A|M, NULL, 0, "dm",      "Create DM object by account id" },
 	{ AdminCreateListNode,{S,S,S,S,N},false, A, NULL, 0, "listnode","Create list node" },
-	{ AdminCreateObject,  {S,N},   true, A, NULL, 0, "object",  "Create object by class name and parms" },
+	{ AdminCreateObject,  {S,N},   true, A|M, NULL, 0, "object",  "Create object by class name and parms" },
 	{ AdminCreateResource,{R,N},   false, A, NULL, 0, "resource","Create resource string" },
 	{ AdminCreateTimer,   {I,S,I,N},false,A, NULL, 0, "timer","Create timer for obj id, message, milli" },
 	{ AdminCreateUser,    {I,N},   false, A|M, NULL, 0, "user",    "Create user object by account id" },
