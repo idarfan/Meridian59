@@ -70,22 +70,29 @@
 - **外觀**：`monster/lich.kod` 是「不死＋女性」的現成範例（`viGender = GENDER_FEMALE`, `licha.bgf`/`lichb.bgf`），已借用 `lichb.bgf`／`lichbx.bgf`（死亡圖）。
 - **編譯部署**：`monster/makefile` 的 `BOFS` 清單要手動加檔名，不是自動掃描。**修正舊筆記錯誤**：`scripts/sync-rsc.sh` 這個檔案不存在，實際靠 Linux `makefile.linux` 的 `%.bof:%.kod` rule 自動把 `.rsc` 複製到 `run/server/rsc`；client（Windows 端 `run/localclient/resource`）要手動另外複製一份。
 
-# Phase 1 實作記錄（跟隨，已完成初版，待你場測確認）
+# Phase 1 實作記錄（跟隨，場測通過，已定案）
 
 **新增檔案**：`kod/object/active/holder/nomoveon/battler/monster/mercenary.kod`
 - `Mercenary is Monster`，`viGender = GENDER_FEMALE`，外觀借用 `lichb.bgf`
 - `GetMaxHitPoints()` 覆寫回傳 5000（經 `Fuzzy()` 隨機化，等同其他怪物的 HP 算法）
-- `viDefault_behavior = AI_MOVE_FOLLOW_MASTER`——靠既有 `ResetBehaviorFlags`/brain.kod 機制跟隨，沒有另寫移動程式碼
-- 新訊息 `BindMaster(oMaster=$)`：呼叫既有的 `Send(self,@SetMaster,#oMaster=oMaster)` + 設 `pbDontDispose=TRUE`，讓 admin console 可以直接綁定主人
+- `viDefault_behavior = AI_MOVE_FOLLOW_MASTER`
+- `BindMaster(oMaster=$)`：呼叫 `Send(self,@SetMaster,#oMaster=oMaster)` + 設 `pbDontDispose=TRUE`，讓 admin console 可以直接綁定主人；同時啟動 `LeashTimer`
+- `SomethingAttacked` 覆寫：**主人打佣兵不會反擊**（見下方事故記錄），其餘情境（例如主人被別人攻擊）正常 propagate，留給 Phase 3 用
+- `SomethingLeft` 覆寫：主人離開房間一律 `Post(self,@GotoMaster)`，不像 `Monster` 原生邏輯要求「離開當下需在 3 格內」才傳送
+- `LeashTimer`（每 2 秒跑一次）：不同房間，或同房間但距主人 > 10 格（`MERC_LEASH_DISTANCE_SQ`），直接 `GotoMaster` 瞬移貼身——原生 `brain.kod` 的 `MoveToMaster` 只是龜速走位 tick，追不上戰鬥情境的節奏
 
 **修改**：`monster/makefile` 的 `BOFS` 加入 `mercenary.bof`
 
+**場測踩到的坑與修法**：
+1. **主人誤攻擊佣兵，佣兵反擊把主人打死了**——`Monster.SomethingAttacked` 預設一律轉給 `poBrain` 判斷反擊，沒有「不能打自己主人」的例外。修法：`Mercenary` 覆寫 `SomethingAttacked`，`victim=self AND what=poMaster` 時直接跳過，不轉發給 brain。已用 admin console 模擬「主人攻擊佣兵」驗證：反擊目標維持 `$`（沒有設定）。
+2. **同房間內跟隨太慢（10+ 秒才追到，戰鬥時人都死了）**——原生 `MoveToMaster` 走位 tick 速度是設計給一般怪物用的，不是為了緊貼跟隨。修法：加 `LeashTimer` 距離判斷，超過閾值直接瞬移，不等她走過去。
+3. **`reload system` 熱重載後，舊的佣兵物件 ID 會被重新分配**（跟角色本身的 object ID 一樣，reload 時會換號），導致舊的（因為 `pbDontDispose=TRUE` 沒被回收）跟新建的同時存在，變成「兩隻佣兵」。**以後每次 `reload system` 之後，要先查一遍場上有沒有殘留舊佣兵再新建**，或改用 `send object <舊id> Delete` 清掉。
+
 **部署驗證**：
-1. `make -f makefile.linux`（在 `kod/` 下）編譯成功，`mercenary.bof`/`.rsc` 已產出並自動複製到 `run/server/{loadkod,rsc}`
-2. 手動把 `mercenary.rsc` 複製到 Windows 端 `run/localclient/resource`（沒有 `sync-rsc.sh` 可用，手動 cp）
-3. maintenance port 執行 `reload system`（save+熱重載 kod，不用整個重啟 server，不會斷玩家連線）成功
-4. `create object Mercenary` → `send object <id> BindMaster oMaster object <角色id>` → `send object <房間id> NewHold what object <id> new_row ... new_col ...` 把佣兵放到角色所在位置，`show object` 確認 `poMaster` 正確、`piBehavior=16`(=AI_MOVE_FOLLOW_MASTER)、`ptBehavior` 計時器已啟動
+1. `make -f makefile.linux`（在 `kod/` 下）編譯成功，`mercenary.bof`/`.rsc` 自動複製到 `run/server/{loadkod,rsc}`
+2. 手動把 `mercenary.rsc` 複製到 Windows 端 `run/localclient/resource`（沒有 `sync-rsc.sh`，手動 cp）
+3. `reload system` 熱重載（不斷線）
+4. `create object Mercenary` → `BindMaster` → `NewHold` 到角色房間/位置
+5. **實機驗收（你確認）**：跟隨速度 OK、換房間會傳送、攻擊她不會還手 ✅
 
-**待驗證（需要你在遊戲畫面確認）**：走開幾步，觀察 mercenary 是否會自動跟過來；換房間時是否會傳送過去。
-
-**未處理，留給後續 Phase**：不死雙重保險（HP≤0攔截）、每 tick 回血、補血、打怪、定身——皆按規格分階段做。
+**未處理，留給後續 Phase**：不死雙重保險（HP≤0攔截）、每 tick 回血、補血、打怪、定身、經驗歸屬——皆按規格分階段做。
