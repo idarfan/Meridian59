@@ -39,7 +39,9 @@ classvars:
    vbCanHeal = FALSE
 
    viMaxMana = 5000
-   viFireballChanceBase = 1   % ~always casts instead of closing to melee
+   viFireballChanceBase = 6   % ~1-in-6 per chase tick -- was 1 (near-every
+                              % tick), which read as 6 fireballs in one
+                              % fight; 1-2 per fight is the target
 
 properties:
 
