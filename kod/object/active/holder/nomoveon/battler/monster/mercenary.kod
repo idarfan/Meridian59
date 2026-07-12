@@ -14,6 +14,14 @@ constants:
 
    include blakston.khd
 
+   % How often we double-check we're in the same room as our master.
+   % Belt-and-suspenders: Monster's inherited SomethingLeft/GotoMaster only
+   % teleport-follows if we happened to be within 3 tiles of the master the
+   % instant he left (see monster.kod SomethingLeft) -- if our walk speed
+   % can't keep up over a big room, that race is lost and we get left behind.
+   % This timer catches that case unconditionally.
+   MERC_LEASH_INTERVAL = 5000
+
 resources:
 
    mercenary_name_rsc = "mercenary"
@@ -44,6 +52,8 @@ classvars:
 
 properties:
 
+   ptLeash = $
+
 messages:
 
    GetMaxHitPoints()
@@ -64,7 +74,65 @@ messages:
       Send(self,@SetMaster,#oMaster=oMaster);
       pbDontDispose = TRUE;
 
+      if ptLeash = $
+      {
+         ptLeash = CreateTimer(self,@LeashTimer,MERC_LEASH_INTERVAL);
+      }
+
       return TRUE;
+   }
+
+   SomethingAttacked(what = $, victim = $, use_weapon = $)
+   "Override: never retaliate against our own master, even if he attacks "
+   "us (by accident or otherwise). Monster's default SomethingAttacked "
+   "forwards every hit to poBrain, which will target and fight back "
+   "against whoever hit us -- with no exception for our own master. "
+   "Skip that dispatch entirely for the master-hit-us case; everything "
+   "else (e.g. master being attacked by someone else, needed in Phase 3) "
+   "still propagates normally."
+   {
+      if victim = self AND what = poMaster
+      {
+         piWalkingEffort = 0;
+         return;
+      }
+
+      propagate;
+   }
+
+   SomethingLeft(what = $, iRow=0, iCol=0)
+   "Override: always attempt to teleport to our master when he leaves the "
+   "room, regardless of how far behind we'd fallen -- the inherited check "
+   "in monster.kod only does this within 3 tiles, which we can easily miss "
+   "if we didn't catch up to him in time."
+   {
+      if poMaster <> $ AND what = poMaster
+      {
+         Post(self,@GotoMaster);
+      }
+
+      propagate;
+   }
+
+   LeashTimer()
+   "Periodic safety net: if we somehow ended up in a different room than "
+   "our master (missed SomethingLeft, lag, etc.), catch up unconditionally."
+   {
+      ptLeash = $;
+
+      if poMaster = $
+      {
+         return;
+      }
+
+      if Send(poMaster,@GetOwner) <> poOwner
+      {
+         Send(self,@GotoMaster);
+      }
+
+      ptLeash = CreateTimer(self,@LeashTimer,MERC_LEASH_INTERVAL);
+
+      return;
    }
 
 end
