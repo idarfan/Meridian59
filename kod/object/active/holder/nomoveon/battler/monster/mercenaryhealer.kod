@@ -10,34 +10,387 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Healer-only variant of Mercenary -- follows and heals, never fights.
 % Meant to be paired with a MercenaryFighter bound to the same master.
-% Reuses the Priestess NPC's appearance so she reads as a dedicated
-% support caster rather than the base Mercenary's undead-warrior look.
+%
+% Appearance/animation: same ported FactionTroop player-body overlay system
+% as MercenaryFighter/MercenaryMage (see monster/troop.kod) -- small human
+% female body in a robe, no weapon/shield/helmet (never melees). Distinct
+% "mx" eyes/mouth/nose set and a different hair pick than Fighter's "kx"
+% and Mage's "lx", plus a gold-tinted robe (vs. Mage's default robe
+% color), so all three mercenary variants read as different people rather
+% than palette-swapped clones.
 MercenaryHealer is Mercenary
 
 constants:
 
    include blakston.khd
 
+   HEALER_TRANSLATION_LEGS_MASK = 0xff
+   HEALER_TRANSLATION_LEGS_MUL = 1
+   HEALER_TRANSLATION_BODY_MASK = 0xff00
+   HEALER_TRANSLATION_BODY_MUL = 0x100
+   HEALER_TRANSLATION_SKIN_MASK = 0xff0000
+   HEALER_TRANSLATION_SKIN_MUL = 0x10000
+
+   HEALER_TRANSLATION2_HAIR_MASK = 0xff
+   HEALER_TRANSLATION2_HAIR_MUL = 1
+   HEALER_TRANSLATION2_ARMS_MASK = 0xff00
+   HEALER_TRANSLATION2_ARMS_MUL = 0x100
+
+   HEALER_NO_ACTION = 1
+
 resources:
 
    merchealer_name_rsc = "mercenary (healer)"
-   merchealer_icon_rsc = priestes.bgf
    merchealer_desc_rsc = \
       "A mercenary spellcaster, bound to keep her master alive rather than "
       "fight at his side."
 
+   % Same female FactionTroop body parts as MercenaryFighter/MercenaryMage
+   % (see monster/troop.kod) -- proven, correctly-animated player-style
+   % overlay rendering, in a robe like Mage.
+   merchealer_icon_rsc = btb.bgf
+   merchealer_legs_rsc = bfb.bgf
+   merchealer_rightarm_rsc = brb.bgf
+   merchealer_leftarm_rsc = blb.bgf
+   merchealer_head_rsc = phkx.bgf
+   % Third female face set ("mx") -- Fighter uses "kx", Mage uses "lx".
+   merchealer_eyes_rsc = pemx.bgf
+   merchealer_mouth_rsc = pmmx.bgf
+   merchealer_nose_rsc = pnmx.bgf
+   merchealer_hair_rsc = ptcb.bgf
+
+   merchealer_dead_icon_rsc = heraXa.bgf
+   merchealer_dead_legs_rsc = heraXb.bgf
+
 classvars:
 
    vrName = merchealer_name_rsc
-   vrIcon = merchealer_icon_rsc
    vrDesc = merchealer_desc_rsc
+   vrDead_icon = merchealer_dead_icon_rsc
 
    vbCanFight = FALSE
    vbCanHeal = TRUE
 
 properties:
 
+   vrIcon = merchealer_icon_rsc
+   vrDead_Legs = merchealer_dead_legs_rsc
+
+   prLegs = merchealer_legs_rsc
+   prRight_arm = merchealer_rightarm_rsc
+   prLeft_arm = merchealer_leftarm_rsc
+   prHead = merchealer_head_rsc
+   prEyes = merchealer_eyes_rsc
+   prMouth = merchealer_mouth_rsc
+   prNose = merchealer_nose_rsc
+   prToupee = merchealer_hair_rsc
+
+   plOverlays = $
+   plUsing = $
+   piBody_translations = 0
+   piBody_translations2 = 0
+   poHair_remove = $
+
 messages:
+
+   Constructor()
+   "Equip a robe (vrIcon override via GetShirtIcon, same mechanism as "
+   "MercenaryFighter/MercenaryMage) -- no weapon/shield/helmet, she never "
+   "melees. Fix the skin tone the same way (piBody_translations defaults "
+   "to 0, which renders raw placeholder blue), and additionally tint the "
+   "robe gold so she doesn't look identical to Mage's default-colored "
+   "robe."
+   {
+      local oRobe;
+
+      oRobe = Create(&LightRobe);
+      Send(self,@SetTroopArmor,#NewArmor=oRobe);
+
+      piBody_translations = piBody_translations & ~HEALER_TRANSLATION_SKIN_MASK;
+      piBody_translations = piBody_translations | (PT_BLUE_TO_SKIN1 * HEALER_TRANSLATION_SKIN_MUL);
+
+      piBody_translations = piBody_translations & ~HEALER_TRANSLATION_BODY_MASK;
+      piBody_translations = piBody_translations | (PT_GRAY_TO_GOLD * HEALER_TRANSLATION_BODY_MUL);
+
+      propagate;
+   }
+
+   SetTroopArmor(NewArmor = $)
+   "Sets the body-icon (vrIcon) to the given armor/robe's shirt graphic."
+   {
+      vrIcon = Send(NewArmor,@GetShirtIcon,#who=self);
+      plUsing = Cons(NewArmor,plUsing);
+
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   AddEquipmentObject(what = $)
+   "Adds an item to plOverlays (rendered by SendOverlays/SendMoveOverlays "
+   "via its own GetOverlayHotspot) and plUsing (worn-items list), skipping "
+   "duplicates. Not currently used (no weapon/shield/helmet), kept for "
+   "parity with MercenaryFighter/MercenaryMage in case one gets added "
+   "later."
+   {
+      local i;
+
+      for i in plOverlays
+      {
+         if i = what
+         {
+            return;
+         }
+      }
+
+      plUsing = Cons(what,plUsing);
+      plOverlays = Cons(what,plOverlays);
+
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   SendMoveAnimation()
+   {
+      local iBody_xlat;
+      iBody_xlat = (piBody_translations & HEALER_TRANSLATION_BODY_MASK)/HEALER_TRANSLATION_BODY_MUL;
+      if iBody_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iBody_xlat);
+      }
+
+      AddPacket(1,ANIMATE_NONE,2,1);
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      local iBody_xlat;
+
+      iBody_xlat = (piBody_translations & HEALER_TRANSLATION_BODY_MASK)/HEALER_TRANSLATION_BODY_MUL;
+      if (piBody_translations & HEALER_TRANSLATION_BODY_MASK) <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iBody_xlat);
+      }
+
+      if piAnimation = PANM_WEAPON_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,300,2,2,2,4,2,1);
+
+         return;
+      }
+
+      propagate;
+   }
+
+   SendMoveOverlays()
+   {
+      local i,iOverlays,hotspot,iLeft_group,iRight_group,iSkin_xlat,iArms_xlat,iLegs_xlat;
+
+      iOverlays = 7;
+
+      if poHair_remove = $
+      {
+         iOverlays = iOverlays + 1;
+      }
+
+      iLeft_group = 1;
+      iRight_group = 1;
+
+      for i in plOverlays
+      {
+         iOverlays = iOverlays + send(i,@GetNumberOverlays);
+         hotspot = Send(i,@GetOverlayHotspot);
+         if hotspot = HS_RIGHT_WEAPON
+         {
+            iRight_group = 17;
+         }
+         else
+         {
+            if hotspot = HS_LEFT_WEAPON or hotspot = HS_BOTTOM_BOW
+            {
+               iLeft_group = 7;
+            }
+         }
+      }
+
+      AddPacket(1,iOverlays);
+      AddPacket(4,prLeft_arm,1,HS_LEFT_HAND);
+
+      iArms_xlat = (piBody_translations2 & HEALER_TRANSLATION2_ARMS_MASK)/HEALER_TRANSLATION2_ARMS_MUL;
+      if iArms_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iArms_xlat);
+      }
+
+      if iLeft_group = 1
+      {
+         AddPacket(1,ANIMATE_CYCLE,4,200,2,2,2,3);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,iLeft_group);
+      }
+
+      AddPacket(4,prRight_arm,1,HS_RIGHT_HAND);
+      if iArms_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iArms_xlat);
+      }
+
+      if iRight_group = 1
+      {
+         Addpacket(1,ANIMATE_CYCLE,4,200,2,2,2,3);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,iRight_group);
+      }
+
+      AddPacket(4,prLegs,1,HS_LEGS);
+      iLegs_xlat = (piBody_translations & HEALER_TRANSLATION_LEGS_MASK)/HEALER_TRANSLATION_LEGS_MUL;
+      if iLegs_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iLegs_xlat);
+      }
+
+      AddPacket(1,ANIMATE_CYCLE,4,100,2,2,2,5);
+
+      iSkin_xlat = (piBody_translations & HEALER_TRANSLATION_SKIN_MASK)/HEALER_TRANSLATION_SKIN_MUL;
+
+      AddPacket(4,prHead,1,HS_HEAD,1,ANIMATE_TRANSLATION,1,iSkin_xlat);
+      Addpacket(1,ANIMATE_NONE,2,1);
+
+      AddPacket(4,prMouth,1,HS_MOUTH,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,HEALER_NO_ACTION);
+      AddPacket(4,prEyes,1,HS_EYES,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,HEALER_NO_ACTION);
+      AddPacket(4,prNose,1,HS_NOSE,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,1);
+
+      if poHair_remove = $
+      {
+         AddPacket(4,prToupee,1,HS_TOUPEE,1,ANIMATE_TRANSLATION,1,
+                   (piBody_translations2 & HEALER_TRANSLATION2_HAIR_MASK)/HEALER_TRANSLATION2_HAIR_MUL);
+         AddPacket(1,ANIMATE_NONE,2,1);
+      }
+
+      for i in plOverlays
+      {
+         send(i,@SendOverlayInformation,#iAnimation = $);
+      }
+
+      return;
+   }
+
+   SendOverlays()
+   {
+      local i,iOverlays,hotspot,iLeft_group,iRight_group,iSkin_xlat,iArms_xlat,iLegs_xlat;
+
+      iOverlays = 7;
+
+      if poHair_remove = $
+      {
+         iOverlays = iOverlays + 1;
+      }
+
+      iLeft_group = 1;
+      iRight_group = 1;
+
+      for i in plOverlays
+      {
+         iOverlays = iOverlays + send(i,@GetNumberOverlays,#iAnimation=piAnimation);
+         hotspot = Send(i,@GetOverlayHotspot);
+         if hotspot = HS_RIGHT_WEAPON
+         {
+            iRight_group = 17;
+         }
+         else
+         {
+            if hotspot = HS_LEFT_WEAPON or hotspot = HS_BOTTOM_BOW
+            {
+               iLeft_group = 7;
+            }
+         }
+      }
+
+      AddPacket(1, iOverlays);
+      iArms_xlat = (piBody_translations2 & HEALER_TRANSLATION2_ARMS_MASK)/HEALER_TRANSLATION2_ARMS_MUL;
+
+      AddPacket(4,prLeft_arm,1,HS_LEFT_HAND);
+      if iArms_Xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iArms_xlat);
+      }
+
+      if piAnimation = PANM_WEAPON_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,300,2,4,2,6,2,iLeft_group);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,iLeft_group);
+      }
+
+      AddPacket(4,prRight_arm,1,HS_RIGHT_HAND);
+      if iArms_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iArms_xlat);
+      }
+
+      if piAnimation = ANIM_NONE
+      {
+         AddPacket(1,ANIMATE_NONE,2,iRight_group);
+      }
+
+      if piAnimation = PANM_WEAPON_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,300,2,4,2,6,2,17);
+      }
+
+      AddPacket(4,prLegs,1,HS_LEGS);
+      iLegs_xlat = (piBody_translations & HEALER_TRANSLATION_LEGS_MASK)/HEALER_TRANSLATION_LEGS_MUL;
+      if iLegs_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iLegs_xlat);
+      }
+
+      if piAnimation = PANM_WEAPON_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,900,2,6,2,6,2,1);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,1);
+      }
+
+      iSkin_xlat = (piBody_translations & HEALER_TRANSLATION_SKIN_MASK)/HEALER_TRANSLATION_SKIN_MUL;
+      AddPacket(4,prHead,1,HS_HEAD,1,ANIMATE_TRANSLATION,1,iSkin_xlat);
+      Addpacket(1,ANIMATE_NONE,2,1);
+
+      AddPacket(4,prMouth,1,HS_MOUTH,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,HEALER_NO_ACTION);
+      AddPacket(4,prEyes,1,HS_EYES,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,HEALER_NO_ACTION);
+      AddPacket(4,prNose,1,HS_NOSE,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,1);
+
+      if poHair_remove = $
+      {
+         AddPacket(4,prToupee,1,HS_TOUPEE,1,ANIMATE_TRANSLATION,
+                   1,(piBody_translations2 & HEALER_TRANSLATION2_HAIR_MASK)/HEALER_TRANSLATION2_HAIR_MUL);
+         AddPacket(1,ANIMATE_NONE,2,1);
+      }
+
+      for i in plOverlays
+      {
+         Send(i,@SendOverlayInformation,#iAnimation=piAnimation);
+      }
+
+      return;
+   }
 
    HealMasterIfNeeded()
    "Override: keep the inherited heal/poison-cure behavior (propagate), "
