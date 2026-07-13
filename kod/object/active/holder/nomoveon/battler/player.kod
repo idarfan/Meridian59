@@ -5972,8 +5972,12 @@ messages:
    }
 
    GetInitialMaxMana()
+   "Local server customization: large fixed mana pool instead of the "
+   "Mysticism-derived formula -- manual set object piMax_Mana edits kept "
+   "getting overwritten back down whenever ComputeMaxMana() re-ran (e.g. "
+   "on reload/stat change), since it always recomputes from this."
    {
-      return 15 + Send(self,@GetMysticism)/5;
+      return 500;
    }
  
    StripNodeList(number=$)
