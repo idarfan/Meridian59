@@ -85,11 +85,78 @@ properties:
    prToupee = mercfighter_hair_rsc
 
    plOverlays = $
+   plUsing = $
    piBody_translations = 0
    piBody_translations2 = 0
    poHair_remove = $
 
 messages:
+
+   Constructor()
+   "Fixed (non-randomized) equipment loadout: sword, shield, helmet, and "
+   "scale armor -- ported/simplified from FactionTroop.SetEquipment and "
+   "FactionTroop.SetHair (helmet branch)."
+   {
+      local oWeapon, oShield, oHelmet, oArmor;
+
+      oWeapon = Create(&LongSword);
+      Send(self,@AddEquipmentObject,#what=oWeapon);
+
+      oShield = Create(&GuildShield,#color1=XLAT_TO_GRAY,#color2=XLAT_TO_GRAY,
+                        #shape=SHIELDSHAPE_DEFAULT);
+      Send(self,@AddEquipmentObject,#what=oShield);
+
+      oHelmet = Create(&SimpleHelm);
+      Send(self,@AddEquipmentObject,#what=oHelmet);
+      poHair_remove = oHelmet;
+
+      oArmor = Create(&ScaleArmor);
+      Send(self,@SetTroopArmor,#NewArmor=oArmor);
+
+      propagate;
+   }
+
+   SetTroopArmor(NewArmor = $)
+   "Sets the body-icon (vrIcon) to the given armor's shirt graphic, and "
+   "keeps it in plUsing so it's a real held item (matters for e.g. "
+   "CreateTreasure-style cleanup, even though Mercenary doesn't drop loot)."
+   {
+      vrIcon = Send(NewArmor,@GetShirtIcon,#who=self);
+      plUsing = Cons(NewArmor,plUsing);
+
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   AddEquipmentObject(what = $)
+   "Adds an item to plOverlays (rendered by SendOverlays/SendMoveOverlays "
+   "via its own GetOverlayHotspot) and plUsing (worn-items list), skipping "
+   "duplicates."
+   {
+      local i;
+
+      for i in plOverlays
+      {
+         if i = what
+         {
+            return;
+         }
+      }
+
+      plUsing = Cons(what,plUsing);
+      plOverlays = Cons(what,plOverlays);
+
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
 
    MonsterAttack(what = $)
    {
