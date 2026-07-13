@@ -24,7 +24,9 @@ constants:
 resources:
 
    mercmage_name_rsc = "mercenary (mage)"
-   mercmage_icon_rsc = licha.bgf
+   % Regular human-sized female NPC appearance instead of the base class's
+   % towering Lich body -- was blocking the player's path.
+   mercmage_icon_rsc = bqclerk.bgf
    mercmage_desc_rsc = \
       "A mercenary spellcaster, bound to rain down destructive magic on "
       "her master's enemies from a safe distance."

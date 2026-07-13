@@ -20,9 +20,14 @@ resources:
 
    mercfighter_name_rsc = "mercenary (fighter)"
 
+   % Regular human-sized female NPC appearance instead of the base class's
+   % towering Lich body -- was blocking the player's path.
+   mercfighter_icon_rsc = cntailor.bgf
+
 classvars:
 
    vrName = mercfighter_name_rsc
+   vrIcon = mercfighter_icon_rsc
 
    vbCanFight = TRUE
    vbCanHeal = FALSE
