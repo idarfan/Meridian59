@@ -195,7 +195,17 @@ messages:
             }
          }
       }
-	  
+
+      % Local server customization: no ammo equipped is no longer a 0-damage
+      % case (see fire.kod's CanPayCosts/PayCosts override that lets the
+      % shot happen at all without arrows) -- fall back to the same
+      % Random(1,5) an actual Ammo item's GetDamage() would have rolled,
+      % so a bow still hits for something when firing with an empty quiver.
+      if iDamage = 0
+      {
+         iDamage = Random(1,5);
+      }
+
 	  iDamage = iDamage + viWeaponDamage;
 	  
       return iDamage;

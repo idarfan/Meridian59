@@ -123,8 +123,15 @@ messages:
    }
 
    CanPayCosts(who=$,oTarget=$)
+   "Local server customization: bows/ranged weapons can fire with no "
+   "ammunition equipped or in inventory at all (see hold.kod's permanent-"
+   "duration override for the same kind of local tweak). Original "
+   "ammo-required check is dead code below, kept for reference in case "
+   "this override needs to be reverted."
    {
       local oAmmo;
+
+      return TRUE;
 
       oAmmo = send(self,@FindLikelyAmmo,#who=who,#report=TRUE);
       if oAmmo <> $
@@ -147,8 +154,16 @@ messages:
       oAmmo = send(self,@FindLikelyAmmo,#who=who);
       if oAmmo = $
       {
-         send(who,@MsgSendUser,#message_rsc=fire_no_ammo);
-         return;
+         % Local server customization: no ammo found is no longer an
+         % error case (see CanPayCosts above) -- just skip the
+         % ammo-specific flavor (no arrow to name, no arrow to consume)
+         % and still let the shot proceed via propagate. Original
+         % "no ammo -> abort" behavior is dead code below, kept for
+         % reference in case this override needs to be reverted.
+         propagate;
+
+         % send(who,@MsgSendUser,#message_rsc=fire_no_ammo);
+         % return;
       }
 
       send(who,@MsgSendUser,#message_rsc=fire_new_ammo,
