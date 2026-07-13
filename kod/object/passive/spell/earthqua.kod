@@ -204,9 +204,9 @@ messages:
       lFinalTargets = lTargets;
       lActive = Send(oRoom,@GetHolderActive);
 
-      % Do the rumble effect, with a chance to disrupt casting. :)
-      % Post it so that it won't affect this casting.
-      Post(oRoom,@Rumble,#duration=3000,#disruption=100);
+      % Local server customization: skip the screen-shake (EFFECT_SHAKE) +
+      % trance-disruption rumble effect entirely.
+      % Post(oRoom,@Rumble,#duration=3000,#disruption=100);
 
       % Send a message to all in room of spellcasters actions  
       for i in lActive

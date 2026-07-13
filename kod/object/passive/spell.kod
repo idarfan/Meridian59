@@ -1290,8 +1290,8 @@ messages:
          % Spell casting requires exertion (which is in 10^-4 units)
          Send(who,@AddExertion,#amount=10000*viSpellExertion);
 
-         % Use up reagents
-         for lReagent in plReagents
+         % Local server customization: skip reagent consumption entirely.
+         for lReagent in $
          {
             cReagentClass = First(lReagent);
             iNumNeeded = Nth(lReagent, 2);
