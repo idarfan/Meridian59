@@ -624,9 +624,15 @@ messages:
    }
 
    CanPayReagents(who = $, lTargets = $, iSpellPower = 0)
+   "Local server customization: no spell requires reagents (see "
+   "hold.kod's permanent-duration override for the same kind of local "
+   "tweak). Original per-reagent inventory check below is dead code, "
+   "kept for reference in case this override needs to be reverted."
    {
       local lReagent, cReagentClass, iNumNeeded, bFound, lItems, lLists,
             oUserObject, iNum, oRing;
+
+      return TRUE;
 
       if Send(who,@PlayerIsImmortal)
       {
