@@ -2662,12 +2662,15 @@ messages:
    }
 
    ManaTimer()
+   "Local server customization: regen 50/tick instead of 1/tick -- was "
+   "taking up to a minute per single point (see CalculateManaTime), which "
+   "read as barely regenerating at all."
    {
       ptMana = $;
 
       if piMana < piMax_mana
       {
-         Send(self,@GainMana,#amount=1);
+         Send(self,@GainMana,#amount=50);
       }
       else
       {
@@ -5643,9 +5646,15 @@ messages:
    }
 
    CalculateManaTime()
-   "Calculate # of milliseconds until user will gain a mana point"
+   "Local server customization: regen tick fixed at 500ms (was up to 60s, "
+   "see the stat-based formula below, now dead code kept for reference)."
    {
       local iTime, lJalaInfo, oJalaSpell, iJalaPower, oSpell, iSpellPower;
+
+      if piMana <= piMax_mana
+      {
+         return 500;
+      }
 
       if piMana > piMax_mana
       {
