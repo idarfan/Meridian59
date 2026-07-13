@@ -14,8 +14,9 @@ constants:
 
    include blakston.khd
 
-   % Delay before ghost pops again automatically.  About two hours (in seconds).
-   GHOST_CYCLE = 7200 
+   % Local server customization: was 7200 (2 hours), then 10 -- cut down
+   % further to 3 seconds for near-instant respawn after being killed.
+   GHOST_CYCLE = 3
 
 resources:
 

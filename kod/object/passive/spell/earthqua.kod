@@ -68,15 +68,16 @@ classvars:
    viHarmful = TRUE
    viNoNewbieOffense = TRUE
 
-   % Local server customization: base damage bumped again (was 15-25,
-   % originally 5-9) to guarantee a one-shot kill on typical mobs (70-130
-   % HP) even at the worst-case severity multiplier of 1 (severity =
-   % 1 + iSpellPower/25, integer division, ranges 1-4 across the full
-   % spellpower range). At severity=1 this alone already exceeds most
-   % mobs' full HP; at max severity (4) it's 400-800, deliberately
-   % overkill by design per explicit request.
-   viMin_damage = 100
-   viMax_damage = 200
+   % Local server customization: base damage bumped again (was 100-200,
+   % before that 15-25, originally 5-9). At severity=1 (worst case: low
+   % spellpower roll), the old 100-200 range's minimum roll (100) fell
+   % just short of tankier variants like TuskedSkeleton (up to ~133 HP),
+   % so a bad-luck roll wouldn't one-shot. viMin_damage=200 guarantees
+   % the floor alone clears every mob's HP in this codebase regardless
+   % of roll or severity; max severity (4) puts the ceiling at 800-1200,
+   % deliberately overkill by design per explicit request.
+   viMin_damage = 200
+   viMax_damage = 300
 
    % Local server customization: distance falloff effectively disabled --
    % both distances bumped far past any real room's dimensions (biggest
