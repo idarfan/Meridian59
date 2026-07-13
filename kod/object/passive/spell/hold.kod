@@ -12,7 +12,13 @@ Hold is Spell
 
 constants:
 
-   include blakston.khd   
+   include blakston.khd
+
+   % Local server customization: Hold/Root duration is permanent (well
+   % under the ~24.8-day int32 millisecond ceiling, so CreateTimer/
+   % StartEnchantment don't overflow -- for all practical play purposes
+   % this never expires on its own).
+   HOLD_PERMANENT_DURATION = 2000000000
 
 resources:
 
@@ -195,13 +201,11 @@ messages:
    } 
 
    GetDuration(iSpellPower = 0)
+   "Local server customization: permanent duration, ignoring spellpower "
+   "entirely.  Original 2-6 second formula below is dead code, kept for "
+   "reference in case this override needs to be reverted."
    {
-      local iDuration;
-
-      % about 2 - 6 seconds
-      iDuration = 2000 + (40 * iSpellPower);
-
-      return random(iDuration/2,iDuration);
+      return HOLD_PERMANENT_DURATION;
    }
 
    DoHold(what = $, otarget = $, iDurationSecs = $, iDuration = $, report=TRUE,
@@ -221,22 +225,9 @@ messages:
          return FALSE;
       }
 
-      % Use iDuration (in ms).  If it is nil, then convert iDurationSecs to ms.
-      if iDuration = $
-      {
-         if iDurationSecs = $
-         {
-            iTotalDuration = 5000;
-         }
-         else
-         {
-            iTotalDuration = iDurationSecs * 1000;
-         }
-      }
-      else
-      {
-         iTotalDuration = iDuration;
-      }
+      % Local server customization: always permanent, regardless of what
+      % the caller asked for (iDuration/iDurationSecs are now ignored).
+      iTotalDuration = HOLD_PERMANENT_DURATION;
 
       % check if the target has free action unless not allowed
       if bAllowFreeAction

@@ -10,32 +10,337 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Combat-only variant of Mercenary -- follows and fights, never heals.
 % Meant to be paired with a MercenaryHealer bound to the same master.
+%
+% Appearance/animation: ported (fixed, non-randomized subset) of
+% FactionTroop's player-body overlay rendering system (see
+% monster/troop.kod) instead of relying on a single .bgf icon like the
+% base Mercenary/Lich body -- this is the same rendering system real
+% players and Duke's soldiers (DukeTroop is FactionTroop) use, which
+% guarantees a correctly-animated walk cycle and attack swing, unlike our
+% earlier attempts (Lich frames looked static/unconvincing in-game, and
+% reusing static shopkeeper .bgf icons risked broken animation).
+%
+% Deliberately simplified vs. FactionTroop: fixed female troop appearance
+% (no randomized gender/hair/face/equipment/shield) since we don't need a
+% squad of visually-varied recruits, just one consistent-looking fighter.
 MercenaryFighter is Mercenary
 
 constants:
 
    include blakston.khd
 
+   FIGHTER_TRANSLATION_LEGS_MASK = 0xff
+   FIGHTER_TRANSLATION_LEGS_MUL = 1
+   FIGHTER_TRANSLATION_BODY_MASK = 0xff00
+   FIGHTER_TRANSLATION_BODY_MUL = 0x100
+   FIGHTER_TRANSLATION_SKIN_MASK = 0xff0000
+   FIGHTER_TRANSLATION_SKIN_MUL = 0x10000
+
+   FIGHTER_TRANSLATION2_HAIR_MASK = 0xff
+   FIGHTER_TRANSLATION2_HAIR_MUL = 1
+   FIGHTER_TRANSLATION2_ARMS_MASK = 0xff00
+   FIGHTER_TRANSLATION2_ARMS_MUL = 0x100
+
+   FIGHTER_NO_ACTION = 1
+
 resources:
 
    mercfighter_name_rsc = "mercenary (fighter)"
 
-   % Reverted to the base class's Lich body (lichb.bgf) -- cntailor.bgf
-   % (a static shopkeeper sprite) has no confirmed walk/attack animation
-   % frames, and Lich is a real combat monster with verified working
-   % animation. Correctness over size until a properly-animated smaller
-   % body is confirmed in-game.
+   % Female FactionTroop body parts (see monster/troop.kod) -- proven,
+   % correctly-animated player-style overlay rendering.
+   mercfighter_icon_rsc = btb.bgf
+   mercfighter_legs_rsc = bfb.bgf
+   mercfighter_rightarm_rsc = brb.bgf
+   mercfighter_leftarm_rsc = blb.bgf
+   mercfighter_head_rsc = phkx.bgf
+   mercfighter_eyes_rsc = pekx.bgf
+   mercfighter_mouth_rsc = pmkx.bgf
+   mercfighter_nose_rsc = pnkx.bgf
+   mercfighter_hair_rsc = ptca.bgf
+
+   mercfighter_dead_icon_rsc = heraXa.bgf
+   mercfighter_dead_legs_rsc = heraXb.bgf
 
 classvars:
 
    vrName = mercfighter_name_rsc
+   vrDead_icon = mercfighter_dead_icon_rsc
 
    vbCanFight = TRUE
    vbCanHeal = FALSE
 
 properties:
 
+   vrIcon = mercfighter_icon_rsc
+   vrDead_Legs = mercfighter_dead_legs_rsc
+
+   prLegs = mercfighter_legs_rsc
+   prRight_arm = mercfighter_rightarm_rsc
+   prLeft_arm = mercfighter_leftarm_rsc
+   prHead = mercfighter_head_rsc
+   prEyes = mercfighter_eyes_rsc
+   prMouth = mercfighter_mouth_rsc
+   prNose = mercfighter_nose_rsc
+   prToupee = mercfighter_hair_rsc
+
+   plOverlays = $
+   piBody_translations = 0
+   piBody_translations2 = 0
+   poHair_remove = $
+
 messages:
+
+   MonsterAttack(what = $)
+   {
+      Send(self,@DoSlash);
+
+      return;
+   }
+
+   DoSlash()
+   {
+      piAnimation = PANM_WEAPON_ATTACK;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = ANIM_NONE;
+
+      return;
+   }
+
+   SendMoveAnimation()
+   {
+      local iBody_xlat;
+      iBody_xlat = (piBody_translations & FIGHTER_TRANSLATION_BODY_MASK)/FIGHTER_TRANSLATION_BODY_MUL;
+      if iBody_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iBody_xlat);
+      }
+
+      AddPacket(1,ANIMATE_NONE,2,1);
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      local iBody_xlat;
+
+      iBody_xlat = (piBody_translations & FIGHTER_TRANSLATION_BODY_MASK)/FIGHTER_TRANSLATION_BODY_MUL;
+      if (piBody_translations & FIGHTER_TRANSLATION_BODY_MASK) <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iBody_xlat);
+      }
+
+      if piAnimation = PANM_WEAPON_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,300,2,2,2,4,2,1);
+
+         return;
+      }
+
+      propagate;
+   }
+
+   SendMoveOverlays()
+   {
+      local i,iOverlays,hotspot,iLeft_group,iRight_group,iSkin_xlat,iArms_xlat,iLegs_xlat;
+
+      iOverlays = 7;
+
+      if poHair_remove = $
+      {
+         iOverlays = iOverlays + 1;
+      }
+
+      iLeft_group = 1;
+      iRight_group = 1;
+
+      for i in plOverlays
+      {
+         iOverlays = iOverlays + send(i,@GetNumberOverlays);
+         hotspot = Send(i,@GetOverlayHotspot);
+         if hotspot = HS_RIGHT_WEAPON
+         {
+            iRight_group = 17;
+         }
+         else
+         {
+            if hotspot = HS_LEFT_WEAPON or hotspot = HS_BOTTOM_BOW
+            {
+               iLeft_group = 7;
+            }
+         }
+      }
+
+      AddPacket(1,iOverlays);
+      AddPacket(4,prLeft_arm,1,HS_LEFT_HAND);
+
+      iArms_xlat = (piBody_translations2 & FIGHTER_TRANSLATION2_ARMS_MASK)/FIGHTER_TRANSLATION2_ARMS_MUL;
+      if iArms_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iArms_xlat);
+      }
+
+      if iLeft_group = 1
+      {
+         AddPacket(1,ANIMATE_CYCLE,4,200,2,2,2,3);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,iLeft_group);
+      }
+
+      AddPacket(4,prRight_arm,1,HS_RIGHT_HAND);
+      if iArms_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iArms_xlat);
+      }
+
+      if iRight_group = 1
+      {
+         Addpacket(1,ANIMATE_CYCLE,4,200,2,2,2,3);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,iRight_group);
+      }
+
+      AddPacket(4,prLegs,1,HS_LEGS);
+      iLegs_xlat = (piBody_translations & FIGHTER_TRANSLATION_LEGS_MASK)/FIGHTER_TRANSLATION_LEGS_MUL;
+      if iLegs_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iLegs_xlat);
+      }
+
+      AddPacket(1,ANIMATE_CYCLE,4,100,2,2,2,5);
+
+      iSkin_xlat = (piBody_translations & FIGHTER_TRANSLATION_SKIN_MASK)/FIGHTER_TRANSLATION_SKIN_MUL;
+
+      AddPacket(4,prHead,1,HS_HEAD,1,ANIMATE_TRANSLATION,1,iSkin_xlat);
+      Addpacket(1,ANIMATE_NONE,2,1);
+
+      AddPacket(4,prMouth,1,HS_MOUTH,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,FIGHTER_NO_ACTION);
+      AddPacket(4,prEyes,1,HS_EYES,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,FIGHTER_NO_ACTION);
+      AddPacket(4,prNose,1,HS_NOSE,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,1);
+
+      if poHair_remove = $
+      {
+         AddPacket(4,prToupee,1,HS_TOUPEE,1,ANIMATE_TRANSLATION,1,
+                   (piBody_translations2 & FIGHTER_TRANSLATION2_HAIR_MASK)/FIGHTER_TRANSLATION2_HAIR_MUL);
+         AddPacket(1,ANIMATE_NONE,2,1);
+      }
+
+      for i in plOverlays
+      {
+         send(i,@SendOverlayInformation,#iAnimation = $);
+      }
+
+      return;
+   }
+
+   SendOverlays()
+   {
+      local i,iOverlays,hotspot,iLeft_group,iRight_group,iSkin_xlat,iArms_xlat,iLegs_xlat;
+
+      iOverlays = 7;
+
+      if poHair_remove = $
+      {
+         iOverlays = iOverlays + 1;
+      }
+
+      iLeft_group = 1;
+      iRight_group = 1;
+
+      for i in plOverlays
+      {
+         iOverlays = iOverlays + send(i,@GetNumberOverlays,#iAnimation=piAnimation);
+         hotspot = Send(i,@GetOverlayHotspot);
+         if hotspot = HS_RIGHT_WEAPON
+         {
+            iRight_group = 17;
+         }
+         else
+         {
+            if hotspot = HS_LEFT_WEAPON or hotspot = HS_BOTTOM_BOW
+            {
+               iLeft_group = 7;
+            }
+         }
+      }
+
+      AddPacket(1, iOverlays);
+      iArms_xlat = (piBody_translations2 & FIGHTER_TRANSLATION2_ARMS_MASK)/FIGHTER_TRANSLATION2_ARMS_MUL;
+
+      AddPacket(4,prLeft_arm,1,HS_LEFT_HAND);
+      if iArms_Xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iArms_xlat);
+      }
+
+      if piAnimation = PANM_WEAPON_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,300,2,4,2,6,2,iLeft_group);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,iLeft_group);
+      }
+
+      AddPacket(4,prRight_arm,1,HS_RIGHT_HAND);
+      if iArms_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iArms_xlat);
+      }
+
+      if piAnimation = ANIM_NONE
+      {
+         AddPacket(1,ANIMATE_NONE,2,iRight_group);
+      }
+
+      if piAnimation = PANM_WEAPON_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,300,2,4,2,6,2,17);
+      }
+
+      AddPacket(4,prLegs,1,HS_LEGS);
+      iLegs_xlat = (piBody_translations & FIGHTER_TRANSLATION_LEGS_MASK)/FIGHTER_TRANSLATION_LEGS_MUL;
+      if iLegs_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iLegs_xlat);
+      }
+
+      if piAnimation = PANM_WEAPON_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,900,2,6,2,6,2,1);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,1);
+      }
+
+      iSkin_xlat = (piBody_translations & FIGHTER_TRANSLATION_SKIN_MASK)/FIGHTER_TRANSLATION_SKIN_MUL;
+      AddPacket(4,prHead,1,HS_HEAD,1,ANIMATE_TRANSLATION,1,iSkin_xlat);
+      Addpacket(1,ANIMATE_NONE,2,1);
+
+      AddPacket(4,prMouth,1,HS_MOUTH,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,FIGHTER_NO_ACTION);
+      AddPacket(4,prEyes,1,HS_EYES,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,FIGHTER_NO_ACTION);
+      AddPacket(4,prNose,1,HS_NOSE,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,1);
+
+      if poHair_remove = $
+      {
+         AddPacket(4,prToupee,1,HS_TOUPEE,1,ANIMATE_TRANSLATION,
+                   1,(piBody_translations2 & FIGHTER_TRANSLATION2_HAIR_MASK)/FIGHTER_TRANSLATION2_HAIR_MUL);
+         AddPacket(1,ANIMATE_NONE,2,1);
+      }
+
+      for i in plOverlays
+      {
+         Send(i,@SendOverlayInformation,#iAnimation=piAnimation);
+      }
+
+      return;
+   }
 
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
