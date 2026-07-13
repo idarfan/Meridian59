@@ -59,6 +59,8 @@ resources:
 
    dm_no_item = "No item with that name exists in the Meridian universe."
    dm_no_monster = "No monster with that name exists in the Meridian universe."
+   dm_no_spell = "No spell with that name exists."
+   dm_gave_spell = "You have been given the %s spell."
    dm_no_item_group = "There is no item group with that name."
    dm_q = "Q"
    
@@ -76,7 +78,7 @@ resources:
             "DM RUMBLE to make the room shake.\n"
    dm_help = "DM APPEAL ON/OFF, DM STEALTH ON/OFF, "
              "DM CLEAR ABILITIES, DM CLEAR INVENTORY, DM PK ENABLE, DM PK DISABLE, DM PK LOCK, DM PK UNLOCK, "             
-             "DM GET SPELLS, DM GET SKILLS, DM GET MONEY, DM BOOST STATS, DM GOOD, DM NEUTRAL, DM EVIL, "
+             "DM GET SPELLS, DM GIVE SPELL <spell name>, DM GET SKILLS, DM GET MONEY, DM BOOST STATS, DM GOOD, DM NEUTRAL, DM EVIL, "
              "DM TOTEM, DM RELIC <number/name>, DM MONSTER <monster name>, DM ITEM <item name>, "
              "DM GET <reagents/ food/ armor/ gems/ rings/ weapons/ necklaces/ potions/ sundries>"
    dm_dontinterfere = "~B~gYou should not try to interfere with the game."
@@ -559,7 +561,7 @@ messages:
 
    UserSay(string = $,type = $)
    {
-      local i, lObjects, iNum, lTemplate, bFound, bAllowed, temp, oBard, oObject, iGiven;
+      local i, lObjects, iNum, lTemplate, bFound, bAllowed, temp, temp2, oBard, oObject, iGiven;
 
       if type <> SAY_DM
       {
@@ -1099,6 +1101,51 @@ messages:
          Send(self,@ToCliSpellSchools);
          Send(self,@ToCliSpells);
          Send(self,@RefigureSchoolsLists);
+
+         return;
+      }
+
+      if StringContain(string,"give spell")
+      {
+         temp = CreateString();
+         temp = SetString(temp,string);
+         StringSubstitute(temp,"give spell","");
+         StringSubstitute(temp," ","");
+
+         bFound = FALSE;
+
+         for i in Send(SYS,@GetSpells)
+         {
+            % Don't give any spells that aren't player spells (diseases, etc).
+            if IsClass(i,&Spell)
+            {
+               temp2 = CreateString();
+               temp2 = SetString(temp2,Send(i,@GetName));
+               StringSubstitute(temp2," ","");
+
+               if StringEqual(temp,temp2)
+               {
+                  iNum = Send(i,@GetSpellNum);
+                  Send(self,@AddSpell,#num=iNum,#iability=99,#bDM=TRUE,#dontSend=TRUE);
+
+                  Send(self,@ToCliSpellSchools);
+                  Send(self,@ToCliSpells);
+                  Send(self,@RefigureSchoolsLists);
+
+                  Send(self,@MsgSendUser,#message_rsc=dm_gave_spell,
+                       #parm1=Send(i,@GetName),#type1=0);
+
+                  bFound = TRUE;
+
+                  return;
+               }
+            }
+         }
+
+         if NOT bFound
+         {
+            Send(self,@MsgSendUser,#message_rsc=dm_no_spell);
+         }
 
          return;
       }
