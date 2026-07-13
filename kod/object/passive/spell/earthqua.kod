@@ -68,14 +68,26 @@ classvars:
    viHarmful = TRUE
    viNoNewbieOffense = TRUE
 
-   viMin_damage = 5
-   viMax_damage = 9
+   % Local server customization: base damage bumped again (was 15-25,
+   % originally 5-9) to guarantee a one-shot kill on typical mobs (70-130
+   % HP) even at the worst-case severity multiplier of 1 (severity =
+   % 1 + iSpellPower/25, integer division, ranges 1-4 across the full
+   % spellpower range). At severity=1 this alone already exceeds most
+   % mobs' full HP; at max severity (4) it's 400-800, deliberately
+   % overkill by design per explicit request.
+   viMin_damage = 100
+   viMax_damage = 200
 
+   % Local server customization: distance falloff effectively disabled --
+   % both distances bumped far past any real room's dimensions (biggest
+   % rooms in this codebase run roughly 50-75 tiles per side, e.g. G9 is
+   % 54x74) so every target in the room lands within the 100%-damage
+   % radius instead of getting reduced/zero damage near the edges.
    % Damage is 100% within this distance
-   viMax_damage_distance = 8
- 
-   % Damage is 0 outside this distance 
-   viZero_damage_distance = 20
+   viMax_damage_distance = 500
+
+   % Damage is 0 outside this distance
+   viZero_damage_distance = 1000
 
 properties:
 
