@@ -329,10 +329,15 @@ messages:
             lBossMonsters = [ &LupoggKing, &Lich, &Ghost, &OrcPitBossBody, &Yeti,
                               &XeoAir, &XeoFire, &XeoWater, &XeoEarth
                             ];
+            % Local server customization: never hit the caster's own
+            % Mercenary (friendly fire) -- IsClass covers all of
+            % Mercenary/MercenaryFighter/MercenaryHealer/MercenaryMage.
             if (Send(each_obj,@GetObjectFlags) & BATTLER_YES)
                AND (NOT bEnvironmental
                     AND IsClass(who,&Player)
                     OR FindListElem(lBossMonsters,GetClass(each_obj)) = 0)
+               AND NOT (IsClass(each_obj,&Mercenary)
+                        AND Send(each_obj,@GetMaster) = who)
             {
                if Send(each_obj,@AssessDamage,#what=oBlameTarget,
                        #damage=iDamage,
