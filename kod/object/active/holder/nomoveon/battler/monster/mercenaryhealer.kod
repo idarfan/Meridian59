@@ -39,5 +39,44 @@ properties:
 
 messages:
 
+   HealMasterIfNeeded()
+   "Override: keep the inherited heal/poison-cure behavior (propagate), "
+   "and additionally keep master hasted -- same cast-spell pattern as "
+   "Mercenary.MonsterCastSpell's Fireball, just targeting poMaster instead "
+   "of poTarget and using a PersonalEnchantment (Haste) instead of an "
+   "AttackSpell. IsEnchanted guard means we only actually cast when it's "
+   "not already active, so this doesn't spam a cast every LeashTimer tick."
+   {
+      local oSpell, lTargets;
+
+      propagate;
+
+      if poMaster = $ OR NOT IsClass(poMaster,&Player)
+      {
+         return;
+      }
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_HASTE);
+      if oSpell = $
+      {
+         return;
+      }
+
+      if Send(poMaster,@IsEnchanted,#what=oSpell)
+      {
+         return;
+      }
+
+      lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=[poMaster]);
+
+      if Send(oSpell,@CanPayMonsterCosts,#who=self,#lTargets=lTargets,#iSpellPower=75)
+         AND Send(poOwner,@ReqSpellCast,#who=self,#oSpell=oSpell,#litems=lTargets)
+      {
+         Send(oSpell,@CastSpell,#who=self,#lTargets=lTargets,#iSpellPower=75);
+      }
+
+      return;
+   }
+
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

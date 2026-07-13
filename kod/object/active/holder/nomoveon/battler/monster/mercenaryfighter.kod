@@ -113,6 +113,12 @@ messages:
       oArmor = Create(&ScaleArmor);
       Send(self,@SetTroopArmor,#NewArmor=oArmor);
 
+      % Fix skin tone: piBody_translations defaults to 0 (no translation),
+      % which renders the raw placeholder blue instead of an actual skin
+      % color -- see troop.kod's SetSkinColor for the same fix upstream.
+      piBody_translations = piBody_translations & ~FIGHTER_TRANSLATION_SKIN_MASK;
+      piBody_translations = piBody_translations | (PT_BLUE_TO_SKIN1 * FIGHTER_TRANSLATION_SKIN_MUL);
+
       propagate;
    }
 

@@ -15,30 +15,62 @@
 % closer") -- so casting nearly every tick means she naturally stays back
 % at range instead of closing to melee, without needing any new movement
 % code of our own.
+%
+% Appearance/animation: same ported FactionTroop player-body overlay system
+% as MercenaryFighter (see monster/troop.kod and mercenaryfighter.kod) --
+% small human female body instead of the towering Lich body, in a robe
+% instead of armor, no weapon/shield/helmet (not needed for a caster who
+% never melees).
 MercenaryMage is Mercenary
 
 constants:
 
    include blakston.khd
 
+   MAGE_TRANSLATION_LEGS_MASK = 0xff
+   MAGE_TRANSLATION_LEGS_MUL = 1
+   MAGE_TRANSLATION_BODY_MASK = 0xff00
+   MAGE_TRANSLATION_BODY_MUL = 0x100
+   MAGE_TRANSLATION_SKIN_MASK = 0xff0000
+   MAGE_TRANSLATION_SKIN_MUL = 0x10000
+
+   MAGE_TRANSLATION2_HAIR_MASK = 0xff
+   MAGE_TRANSLATION2_HAIR_MUL = 1
+   MAGE_TRANSLATION2_ARMS_MASK = 0xff00
+   MAGE_TRANSLATION2_ARMS_MUL = 0x100
+
+   MAGE_NO_ACTION = 1
+
 resources:
 
    mercmage_name_rsc = "mercenary (mage)"
-   % Reverted to Lich's alternate body (licha.bgf) -- bqclerk.bgf (a static
-   % shopkeeper sprite) has no confirmed walk/attack animation frames, and
-   % Lich is a real combat monster with verified working animation.
-   % Correctness over size until a properly-animated smaller body is
-   % confirmed in-game.
-   mercmage_icon_rsc = licha.bgf
    mercmage_desc_rsc = \
       "A mercenary spellcaster, bound to rain down destructive magic on "
       "her master's enemies from a safe distance."
 
+   % Same female FactionTroop body parts as MercenaryFighter (see
+   % monster/troop.kod) -- proven, correctly-animated player-style overlay
+   % rendering, just in a robe instead of armor.
+   mercmage_icon_rsc = btb.bgf
+   mercmage_legs_rsc = bfb.bgf
+   mercmage_rightarm_rsc = brb.bgf
+   mercmage_leftarm_rsc = blb.bgf
+   mercmage_head_rsc = phkx.bgf
+   % Different eyes/mouth/nose set than MercenaryFighter's (which uses the
+   % "kx" set) so the two don't look identical apart from clothing.
+   mercmage_eyes_rsc = pelx.bgf
+   mercmage_mouth_rsc = pmlx.bgf
+   mercmage_nose_rsc = pnlx.bgf
+   mercmage_hair_rsc = ptca.bgf
+
+   mercmage_dead_icon_rsc = heraXa.bgf
+   mercmage_dead_legs_rsc = heraXb.bgf
+
 classvars:
 
    vrName = mercmage_name_rsc
-   vrIcon = mercmage_icon_rsc
    vrDesc = mercmage_desc_rsc
+   vrDead_icon = mercmage_dead_icon_rsc
 
    vbCanFight = TRUE
    vbCanHeal = FALSE
@@ -50,7 +82,357 @@ classvars:
 
 properties:
 
+   vrIcon = mercmage_icon_rsc
+   vrDead_Legs = mercmage_dead_legs_rsc
+
+   prLegs = mercmage_legs_rsc
+   prRight_arm = mercmage_rightarm_rsc
+   prLeft_arm = mercmage_leftarm_rsc
+   prHead = mercmage_head_rsc
+   prEyes = mercmage_eyes_rsc
+   prMouth = mercmage_mouth_rsc
+   prNose = mercmage_nose_rsc
+   prToupee = mercmage_hair_rsc
+
+   plOverlays = $
+   plUsing = $
+   piBody_translations = 0
+   piBody_translations2 = 0
+   poHair_remove = $
+
 messages:
+
+   Constructor()
+   "Equip a robe (vrIcon override via GetShirtIcon, same mechanism as "
+   "MercenaryFighter's armor) -- no weapon/shield/helmet, she never melees. "
+   "Also fix the skin tone: piBody_translations defaults to 0 (no "
+   "translation), which renders the raw placeholder blue instead of an "
+   "actual skin color -- see troop.kod's SetSkinColor for the same fix "
+   "upstream."
+   {
+      local oRobe;
+
+      oRobe = Create(&LightRobe);
+      Send(self,@SetTroopArmor,#NewArmor=oRobe);
+
+      piBody_translations = piBody_translations & ~MAGE_TRANSLATION_SKIN_MASK;
+      piBody_translations = piBody_translations | (PT_BLUE_TO_SKIN1 * MAGE_TRANSLATION_SKIN_MUL);
+
+      propagate;
+   }
+
+   SetTroopArmor(NewArmor = $)
+   "Sets the body-icon (vrIcon) to the given armor/robe's shirt graphic."
+   {
+      vrIcon = Send(NewArmor,@GetShirtIcon,#who=self);
+      plUsing = Cons(NewArmor,plUsing);
+
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   AddEquipmentObject(what = $)
+   "Adds an item to plOverlays (rendered by SendOverlays/SendMoveOverlays "
+   "via its own GetOverlayHotspot) and plUsing (worn-items list), skipping "
+   "duplicates. Not currently used (no weapon/shield/helmet), kept for "
+   "parity with MercenaryFighter in case one gets added later."
+   {
+      local i;
+
+      for i in plOverlays
+      {
+         if i = what
+         {
+            return;
+         }
+      }
+
+      plUsing = Cons(what,plUsing);
+      plOverlays = Cons(what,plOverlays);
+
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   MonsterCastSpell()
+   "Override: no more Fireball -- was one-shotting things (\"too "
+   "overpowered\"). Cast Hold/root on the target instead: TryHoldTarget "
+   "(inherited from Mercenary) already no-ops once the target is held, and "
+   "Hold is now permanent (see spell/hold.kod), so this reads as \"root "
+   "once, then just keep swinging\" rather than genuinely spell-spamming "
+   "every tick. Returning TRUE (whether or not the hold attempt actually "
+   "did anything) still gets us the same benefit Fireball had: "
+   "monster.kod's ChaseTimer only closes to melee range when it did NOT "
+   "cast a spell that tick, so we keep our distance instead."
+   {
+      if poTarget = $
+      {
+         return FALSE;
+      }
+
+      Send(self,@TryHoldTarget,#oEnemy=poTarget);
+
+      return TRUE;
+   }
+
+   MonsterAttack(what = $)
+   {
+      Send(self,@DoSlash);
+
+      return;
+   }
+
+   DoSlash()
+   {
+      piAnimation = PANM_WEAPON_ATTACK;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = ANIM_NONE;
+
+      return;
+   }
+
+   SendMoveAnimation()
+   {
+      local iBody_xlat;
+      iBody_xlat = (piBody_translations & MAGE_TRANSLATION_BODY_MASK)/MAGE_TRANSLATION_BODY_MUL;
+      if iBody_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iBody_xlat);
+      }
+
+      AddPacket(1,ANIMATE_NONE,2,1);
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      local iBody_xlat;
+
+      iBody_xlat = (piBody_translations & MAGE_TRANSLATION_BODY_MASK)/MAGE_TRANSLATION_BODY_MUL;
+      if (piBody_translations & MAGE_TRANSLATION_BODY_MASK) <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iBody_xlat);
+      }
+
+      if piAnimation = PANM_WEAPON_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,300,2,2,2,4,2,1);
+
+         return;
+      }
+
+      propagate;
+   }
+
+   SendMoveOverlays()
+   {
+      local i,iOverlays,hotspot,iLeft_group,iRight_group,iSkin_xlat,iArms_xlat,iLegs_xlat;
+
+      iOverlays = 7;
+
+      if poHair_remove = $
+      {
+         iOverlays = iOverlays + 1;
+      }
+
+      iLeft_group = 1;
+      iRight_group = 1;
+
+      for i in plOverlays
+      {
+         iOverlays = iOverlays + send(i,@GetNumberOverlays);
+         hotspot = Send(i,@GetOverlayHotspot);
+         if hotspot = HS_RIGHT_WEAPON
+         {
+            iRight_group = 17;
+         }
+         else
+         {
+            if hotspot = HS_LEFT_WEAPON or hotspot = HS_BOTTOM_BOW
+            {
+               iLeft_group = 7;
+            }
+         }
+      }
+
+      AddPacket(1,iOverlays);
+      AddPacket(4,prLeft_arm,1,HS_LEFT_HAND);
+
+      iArms_xlat = (piBody_translations2 & MAGE_TRANSLATION2_ARMS_MASK)/MAGE_TRANSLATION2_ARMS_MUL;
+      if iArms_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iArms_xlat);
+      }
+
+      if iLeft_group = 1
+      {
+         AddPacket(1,ANIMATE_CYCLE,4,200,2,2,2,3);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,iLeft_group);
+      }
+
+      AddPacket(4,prRight_arm,1,HS_RIGHT_HAND);
+      if iArms_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iArms_xlat);
+      }
+
+      if iRight_group = 1
+      {
+         Addpacket(1,ANIMATE_CYCLE,4,200,2,2,2,3);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,iRight_group);
+      }
+
+      AddPacket(4,prLegs,1,HS_LEGS);
+      iLegs_xlat = (piBody_translations & MAGE_TRANSLATION_LEGS_MASK)/MAGE_TRANSLATION_LEGS_MUL;
+      if iLegs_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iLegs_xlat);
+      }
+
+      AddPacket(1,ANIMATE_CYCLE,4,100,2,2,2,5);
+
+      iSkin_xlat = (piBody_translations & MAGE_TRANSLATION_SKIN_MASK)/MAGE_TRANSLATION_SKIN_MUL;
+
+      AddPacket(4,prHead,1,HS_HEAD,1,ANIMATE_TRANSLATION,1,iSkin_xlat);
+      Addpacket(1,ANIMATE_NONE,2,1);
+
+      AddPacket(4,prMouth,1,HS_MOUTH,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,MAGE_NO_ACTION);
+      AddPacket(4,prEyes,1,HS_EYES,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,MAGE_NO_ACTION);
+      AddPacket(4,prNose,1,HS_NOSE,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,1);
+
+      if poHair_remove = $
+      {
+         AddPacket(4,prToupee,1,HS_TOUPEE,1,ANIMATE_TRANSLATION,1,
+                   (piBody_translations2 & MAGE_TRANSLATION2_HAIR_MASK)/MAGE_TRANSLATION2_HAIR_MUL);
+         AddPacket(1,ANIMATE_NONE,2,1);
+      }
+
+      for i in plOverlays
+      {
+         send(i,@SendOverlayInformation,#iAnimation = $);
+      }
+
+      return;
+   }
+
+   SendOverlays()
+   {
+      local i,iOverlays,hotspot,iLeft_group,iRight_group,iSkin_xlat,iArms_xlat,iLegs_xlat;
+
+      iOverlays = 7;
+
+      if poHair_remove = $
+      {
+         iOverlays = iOverlays + 1;
+      }
+
+      iLeft_group = 1;
+      iRight_group = 1;
+
+      for i in plOverlays
+      {
+         iOverlays = iOverlays + send(i,@GetNumberOverlays,#iAnimation=piAnimation);
+         hotspot = Send(i,@GetOverlayHotspot);
+         if hotspot = HS_RIGHT_WEAPON
+         {
+            iRight_group = 17;
+         }
+         else
+         {
+            if hotspot = HS_LEFT_WEAPON or hotspot = HS_BOTTOM_BOW
+            {
+               iLeft_group = 7;
+            }
+         }
+      }
+
+      AddPacket(1, iOverlays);
+      iArms_xlat = (piBody_translations2 & MAGE_TRANSLATION2_ARMS_MASK)/MAGE_TRANSLATION2_ARMS_MUL;
+
+      AddPacket(4,prLeft_arm,1,HS_LEFT_HAND);
+      if iArms_Xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iArms_xlat);
+      }
+
+      if piAnimation = PANM_WEAPON_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,300,2,4,2,6,2,iLeft_group);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,iLeft_group);
+      }
+
+      AddPacket(4,prRight_arm,1,HS_RIGHT_HAND);
+      if iArms_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iArms_xlat);
+      }
+
+      if piAnimation = ANIM_NONE
+      {
+         AddPacket(1,ANIMATE_NONE,2,iRight_group);
+      }
+
+      if piAnimation = PANM_WEAPON_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,300,2,4,2,6,2,17);
+      }
+
+      AddPacket(4,prLegs,1,HS_LEGS);
+      iLegs_xlat = (piBody_translations & MAGE_TRANSLATION_LEGS_MASK)/MAGE_TRANSLATION_LEGS_MUL;
+      if iLegs_xlat <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,iLegs_xlat);
+      }
+
+      if piAnimation = PANM_WEAPON_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,900,2,6,2,6,2,1);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,1);
+      }
+
+      iSkin_xlat = (piBody_translations & MAGE_TRANSLATION_SKIN_MASK)/MAGE_TRANSLATION_SKIN_MUL;
+      AddPacket(4,prHead,1,HS_HEAD,1,ANIMATE_TRANSLATION,1,iSkin_xlat);
+      Addpacket(1,ANIMATE_NONE,2,1);
+
+      AddPacket(4,prMouth,1,HS_MOUTH,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,MAGE_NO_ACTION);
+      AddPacket(4,prEyes,1,HS_EYES,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,MAGE_NO_ACTION);
+      AddPacket(4,prNose,1,HS_NOSE,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,1);
+
+      if poHair_remove = $
+      {
+         AddPacket(4,prToupee,1,HS_TOUPEE,1,ANIMATE_TRANSLATION,
+                   1,(piBody_translations2 & MAGE_TRANSLATION2_HAIR_MASK)/MAGE_TRANSLATION2_HAIR_MUL);
+         AddPacket(1,ANIMATE_NONE,2,1);
+      }
+
+      for i in plOverlays
+      {
+         Send(i,@SendOverlayInformation,#iAnimation=piAnimation);
+      }
+
+      return;
+   }
 
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
