@@ -1172,6 +1172,14 @@ messages:
    }
 
    SuccessChance(who=$,iSpellpower=0,lTargets=$)
+   "Local server customization: spells always succeed. Stat-based roll "
+   "below (GetDivisionReq/GetSpellPower-derived) is dead code, kept for "
+   "reference in case this override needs to be reverted."
+   {
+      return TRUE;
+   }
+
+   OldSuccessChance(who=$,iSpellpower=0,lTargets=$)
    "This is always TRUE for touch attack spells, because touch attacks"
    "figure their success in player.kod."
    {
