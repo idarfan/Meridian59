@@ -170,35 +170,13 @@ messages:
          return;
       }
 
-      % Player caster takes self-damage (only applies to caster-based earthquake)
+      % Local server customization: caster takes no self-damage from their
+      % own Earthquake. Original block (self-damage that scales down but
+      % never to zero with caster experience) removed entirely below.
       if NOT bEnvironmental
          AND IsClass(who,&Player)
       {
-         % Special consideration:  how badly the player hurt himself and
-         %  did the player kill himself?
-
-         if NOT bItemCast
-         {
-            iDamage = Send(self,@ComputeDamage,#who=who,#target=who,
-                           #severity=severity);
-         }
-         else
-         {
-            % Full damage if cast from an item (that is, a scroll).
-            % This is to punish people that spam Earthquake scrolls.
-            iDamage = viMax_damage * severity;
-         }
-
-         if Send(who,@AssessDamage,#what=who,#damage=iDamage,#atype=0,
-                 #aspell=viAttack_spell,#report=FALSE) = $
-         {
-            Send(who,@MsgSendUser,#message_rsc=earthquake_killed_self);
-            Post(who,@KilledSomething,#what=oBlameTarget,#use_weapon=self);
-         }
-         else
-         {
-            Send(who,@MsgSendUser,#message_rsc=earthquake_cast_rsc);
-         }
+         Send(who,@MsgSendUser,#message_rsc=earthquake_cast_rsc);
       }
    
       lFinalTargets = lTargets;
