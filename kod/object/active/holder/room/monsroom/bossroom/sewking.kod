@@ -110,7 +110,7 @@ properties:
    prRoom = room_SewerKingLair
    piRoom_num = RID_SEWER_KING
 
-   piBaseLight = (LIGHT_VERY_DARK + LIGHT_MIN)/2
+   piBaseLight = LIGHT_MAX  % Local server customization: was (LIGHT_VERY_DARK + LIGHT_MIN)/2, set to full brightness so torches aren't needed to see.
    piOutside_factor = 0
 
    piGen_time = 25000

@@ -85,7 +85,7 @@ properties:
    prRoom = room_underworld
    piRoom_num = RID_UNDERWORLD
 
-   piBaseLight = 128
+   piBaseLight = LIGHT_MAX  % Local server customization: was 128, set to full brightness so torches aren't needed to see.
    piOutside_factor = OUTDOORS_NONE
 
    prMusic = underworld_music

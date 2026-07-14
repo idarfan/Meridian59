@@ -34,7 +34,7 @@ properties:
    piRoom_num = RID_ORC_CAVE5
    prRoom = room_orccave5
 
-   piBaseLight = LIGHT_MIN
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_MIN, set to full brightness so torches aren't needed to see.
    piOutside_factor = 0
 
    piGen_time = 15000

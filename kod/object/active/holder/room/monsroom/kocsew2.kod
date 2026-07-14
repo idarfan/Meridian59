@@ -42,7 +42,7 @@ properties:
    prRoom = room_kocsew2
    piRoom_num = RID_KOC_SEWER2
 
-   piBaseLight = LIGHT_MIN
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_MIN, set to full brightness so torches aren't needed to see.
    piOutside_factor = 0
 
    prMusic = kocsew2_music

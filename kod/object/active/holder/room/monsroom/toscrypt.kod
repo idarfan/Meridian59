@@ -35,7 +35,7 @@ properties:
    piRoom_num = RID_TOS_CRYPT
    prMusic = music_toscrypt
 
-   piBaseLight = LIGHT_VERY_DARK
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_VERY_DARK, set to full brightness so torches aren't needed to see.
 
 messages:
 

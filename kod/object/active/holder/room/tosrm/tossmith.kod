@@ -38,7 +38,7 @@ properties:
    prRoom = room_tossmith
    piRoom_num = RID_TOS_SMITHY
 
-   piBaseLight = 100
+   piBaseLight = LIGHT_MAX  % Local server customization: was 100, set to full brightness so torches aren't needed to see.
    piOutside_factor = OUTDOORS_NONE
 
    prMusic = tossmith_music

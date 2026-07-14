@@ -36,7 +36,7 @@ properties:
    prRoom = room_Necropolis3a
    piRoom_num = RID_NECROAREA3a
 
-   piBaseLight = LIGHT_MIN
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_MIN, set to full brightness so torches aren't needed to see.
    piOutside_factor = 0
 
    piGen_time = 40000

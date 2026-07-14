@@ -41,7 +41,7 @@ properties:
    prRoom = room_dungeon
    prMusic = dungeon_music
 
-   piBaseLight = 80
+   piBaseLight = LIGHT_MAX  % Local server customization: was 80, set to full brightness so torches aren't needed to see.
    piOutside_factor = 0
 
    piHoursCounter = HOURS_PER_TOY

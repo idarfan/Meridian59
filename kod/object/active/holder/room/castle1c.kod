@@ -33,7 +33,7 @@ properties:
 
    prMusic = castle1c_music
 
-   piBaseLight = LIGHT_DARK
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_DARK, set to full brightness so torches aren't needed to see.
    piOutside_factor = OUTDOORS_10 
 
    piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS

@@ -88,7 +88,7 @@ properties:
    prRoom = room_asshq
    prMusic = asshq_music
 
-   piBaseLight = 80
+   piBaseLight = LIGHT_MAX  % Local server customization: was 80, set to full brightness so torches aren't needed to see.
    piOutside_factor = 0
 
 messages:
