@@ -215,46 +215,22 @@ messages:
    }
 
    EvaluatePuzzle()
+   "Local server customization: original puzzle required a specific "
+   "player-count ratio between this room and OrcPitA, needing multiple "
+   "people split across both rooms standing on exact tiles -- unsolvable "
+   "solo. Simplified so a single player standing anywhere in this room's "
+   "chamber area opens the passage by themselves."
    {
-      local NumChamberA, NumChamberB, oRoomA, bAllAA, bAllAB, bAllBA, bAllBB;
-      oRoomA = Send(SYS,@FindRoombynum,#num=RID_ORC_PIT_A);
-   
-      NumChamberA = send(oRoomA,@NumInChamber);
-      NumChamberB = send(self,@NumInChamber);
-   
-      If NumChamberA * 3 = NumChamberB or
-	 NumChamberA * 2 = NumChamberB or
-	 NumChamberA * 2 = NumChamberB * 3
-      {
-	 bAllAA = Send(oRoomA,@AllAUsed);
-	 bAllAB = Send(oRoomA,@AllBUsed);
-	 bAllBA = Send(Self,@AllAUsed);
-	 bAllBB = Send(Self,@AllBUsed);
-	 ptPuzzle = createtimer(self,@ResetPuzzle,60000);
-	 
-	 if bAllAA and bAllAB and bAllBA and bAllBB % Person on all "A" and "B" in each room.
-	    {
-	    send(oRoomA,@DoSolution,#height=SOLUTIONHEIGHTA1);
-	    send(Self,@DoSolution,#height=SOLUTIONHEIGHTB1);
-	    return;
-	    }
+      local NumChamberB;
 
-	 if bAllAA and bAllBA % Person on all "A" in each room.
-	    {
-	    send(oRoomA,@DoSolution,#height=SOLUTIONHEIGHTA3);
-	    send(Self,@DoSolution,#height=SOLUTIONHEIGHTB3);
-	    return;
-	    }      
-	 
-	 if bAllAB and bAllBB % Person on all "B" in each room.
-	    {
-	    send(oRoomA,@DoSolution,#height=SOLUTIONHEIGHTA2);
-	    send(Self,@DoSolution,#height=SOLUTIONHEIGHTB2);
-	    return;
-	    }      
-	    send(oRoomA,@DoSolution,#height=SOLUTIONHEIGHTA1);  % None of the above
-	    send(Self,@DoSolution,#height=SOLUTIONHEIGHTB1);
-        }
+      NumChamberB = send(self,@NumInChamber);
+
+      if NumChamberB >= 1
+      {
+         ptPuzzle = createtimer(self,@ResetPuzzle,60000);
+         send(Self,@DoSolution,#height=SOLUTIONHEIGHTB1);
+      }
+
       return;
    }
 
@@ -330,9 +306,9 @@ messages:
 	 if (iRow = 46 and iCol = 30) and isclass(each_obj,&user)
 	    {bBTwo = TRUE; }
 	 if (iRow = 50 and iCol = 28) and isclass(each_obj,&user)
-	    {bBTwo = TRUE; }
+	    {bBThree = TRUE; }
 	 if (iRow = 50 and iCol = 30) and isclass(each_obj,&user)
-	    {bBTwo = TRUE; }
+	    {bBFour = TRUE; }
 
    
       }
