@@ -77,6 +77,8 @@ resources:
    HunterSword_hunger_assuaged = "Your sword drinks in %s%s's impure blood.  You can feel it course along its roots "
       "into your body, filling you with energy."
 
+   HunterSword_full_heal = "You feel amazing, without a shred of guilt."
+
    HunterSword_lose_sword = "Your unworthiness has offended your sword of the hunt.  "
       "Writhing violently in your hands for a few moments, the sword suddenly springs up and away out of sight."
 
@@ -439,6 +441,7 @@ messages:
          send(poOwner,@GainHealthNormal,#amount=999999);
          send(poOwner,@GainMana,#amount=999999,#bCapped=TRUE);
          send(poOwner,@AddExertion,#amount=-999999999);
+         send(poOwner, @MsgSendUser, #message_rsc = HunterSword_full_heal);
       }
       if (poOwner <> $ and isClass(poOwner,&User)) and victim = poOwner {
          post(self,@OwnerKilled,#what=what);
