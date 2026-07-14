@@ -1293,9 +1293,22 @@ messages:
       return;
    }
 
+   FullyRestoreVigor()
+   "Local server customization: directly maxes out vigor/exertion, "
+   "bypassing AddExertion's Second Wind guard (AddExertion silently no-ops "
+   "on negative amounts while Second Wind is active, which was blocking "
+   "Sword of the Hunt's kill-heal from restoring vigor)."
+   {
+      piVigor = viMax_vigor;
+      piExertion = 0;
+      Send(self,@NewVigor);
+
+      return;
+   }
+
    RestAddExertion(amount = 0)
    "Gives inns a bonus as resting places."
-   {        
+   {
       local iAmount;
 
       iAmount = amount;

@@ -440,7 +440,7 @@ messages:
          % vigor.
          send(poOwner,@GainHealthNormal,#amount=999999);
          send(poOwner,@GainMana,#amount=999999,#bCapped=TRUE);
-         send(poOwner,@AddExertion,#amount=-999999999);
+         send(poOwner,@FullyRestoreVigor);
          send(poOwner, @MsgSendUser, #message_rsc = HunterSword_full_heal);
       }
       if (poOwner <> $ and isClass(poOwner,&User)) and victim = poOwner {
