@@ -104,6 +104,73 @@ messages:
       return 5000;
    }
 
+   AssessDamage(what = $, damage = $, atype = 0, aspell = 0, bonus = 0,
+                absolute = FALSE)
+   "Local server customization: full override of Monster.AssessDamage -- "
+   "this is the 'double insurance' immortality MERCENARY_SPEC.md originally "
+   "called for but deferred (KOD's propagate can't intercept a parent's "
+   "return value, so making this bulletproof requires copying the whole "
+   "method). Hit points are clamped to a minimum of 1 and we never return "
+   "$ (the signal callers use to trigger @Killed), so no amount of damage "
+   "can kill us -- immortal in practice, not just a big HP pool."
+   {
+      local iDamage, iResist, iPercentClass;
+
+      if (piBehavior & AI_NPC)
+      {
+         Send(what,@MsgSendUser,#message_rsc=LS_nofight_attacked);
+
+         return 0;
+      }
+
+      if NOT absolute
+      {
+         iResist = Send(self,@ResistanceCheck,#atype=atype,#aspell=aspell);
+         iDamage = Send(self,@GetDamageFromResistance,#what=damage,
+                        #value=iResist);
+      }
+      else
+      {
+         iDamage = damage;
+      }
+
+      iDamage = iDamage + bonus;
+
+      iPercentClass = piHit_points*5/piMax_hit_points;
+
+      iDamage = Bound(iDamage,1,$);
+
+      if what = poTarget
+      {
+         piHatred = piHatred + 1;
+      }
+
+      piHit_points = piHit_points - iDamage;
+
+      if piHit_points < 1
+      {
+         piHit_points = 1;
+      }
+
+      if poOwner = $
+      {
+         return 0;
+      }
+
+      if iPercentClass <> (piHit_points*5/piMax_hit_points)
+      {
+         Send(self,@HitPointThreshold);
+      }
+
+      if IsClass(what,&player) and NOT absolute
+      {
+         Post(what,@MsgPlayerHitResisted,#what=what,#resistance=iResist,
+              #target=self,#color_rsc=monster_color_blue_rsc);
+      }
+
+      return iDamage;
+   }
+
    Constructor()
    "Seed piMana from viMaxMana, so a subclass overriding viMaxMana (e.g. "
    "MercenaryMage) gets the bigger pool without needing its own properties "
@@ -533,7 +600,7 @@ messages:
 
       if poMaster <> $
       {
-         Send(poMaster,@RememberMercenary,#oMercenary=$);
+         Send(poMaster,@ForgetMercenary,#oMercenary=self);
       }
 
       propagate;

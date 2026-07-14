@@ -754,8 +754,8 @@ properties:
    % mercenary (so we don't summon a duplicate) and which mercenary class
    % to auto-resummon with on next login if the current one is gone
    % (killed, or never resummoned after a reload -- see MERCENARY_SPEC.md).
-   poCurrentMercenary = $
-   poLastMercenaryClass = $
+   plCurrentMercenaries = $
+   plLastMercenaryClasses = $
 
    % Flags for various character attributes.
    piFlags = 0
@@ -1833,47 +1833,82 @@ messages:
 
    RememberMercenary(oMercenary = $)
    "Local server customization: called by Mercenary.BindMaster so we track "
-   "our currently-bound mercenary and remember its class for auto-resummon "
-   "on next login."
+   "every currently-bound mercenary (a player can run a full squad -- "
+   "Fighter/Healer/Mage simultaneously) and remember each distinct class "
+   "for auto-resummon on next login."
    {
-      poCurrentMercenary = oMercenary;
+      local oClass, bAlreadyKnown, i;
 
-      if oMercenary <> $
+      if oMercenary = $
       {
-         poLastMercenaryClass = GetClass(oMercenary);
+         return;
+      }
+
+      plCurrentMercenaries = Cons(oMercenary,plCurrentMercenaries);
+
+      oClass = GetClass(oMercenary);
+      bAlreadyKnown = FALSE;
+      for i in plLastMercenaryClasses
+      {
+         if i = oClass
+         {
+            bAlreadyKnown = TRUE;
+         }
+      }
+
+      if NOT bAlreadyKnown
+      {
+         plLastMercenaryClasses = Cons(oClass,plLastMercenaryClasses);
       }
 
       return;
    }
 
-   AutoResummonMercenary()
-   "Local server customization: if we had a mercenary bound before (killed, "
-   "or lost to a reload -- see MERCENARY_SPEC.md) and don't currently have "
-   "a live one, summon a fresh one of the same class and rebind it. Called "
-   "from UserLogonHook."
+   ForgetMercenary(oMercenary = $)
+   "Local server customization: called by Mercenary.Delete() (killed, or "
+   "explicitly removed). Only drops it from the 'currently alive' list -- "
+   "its class stays in plLastMercenaryClasses so AutoResummonMercenary "
+   "still knows to bring one back."
    {
-      local oNewMercenary;
-
-      if poLastMercenaryClass = $
+      if oMercenary = $ OR plCurrentMercenaries = $
       {
          return;
       }
 
-      % poCurrentMercenary is cleared by Mercenary.Delete() (killed, or
-      % explicitly removed), so a non-$ value here means it's still alive.
-      if poCurrentMercenary <> $
-      {
-         return;
-      }
+      plCurrentMercenaries = DelListElem(plCurrentMercenaries,oMercenary);
 
-      oNewMercenary = Create(poLastMercenaryClass);
-      if oNewMercenary = $
-      {
-         return;
-      }
+      return;
+   }
 
-      Send(oNewMercenary,@BindMaster,#oMaster=self);
-      Send(poOwner,@NewHold,#what=oNewMercenary,#new_row=piRow,#new_col=piCol);
+   AutoResummonMercenary()
+   "Local server customization: for every mercenary class we've ever bound "
+   "(killed, or lost to a reload -- see MERCENARY_SPEC.md) that doesn't "
+   "currently have a live instance following us, summon a fresh one and "
+   "rebind it. Called from UserLogonHook."
+   {
+      local iClass, oEachMercenary, bHasLiveOne, oNewMercenary;
+
+      for iClass in plLastMercenaryClasses
+      {
+         bHasLiveOne = FALSE;
+         for oEachMercenary in plCurrentMercenaries
+         {
+            if GetClass(oEachMercenary) = iClass
+            {
+               bHasLiveOne = TRUE;
+            }
+         }
+
+         if NOT bHasLiveOne
+         {
+            oNewMercenary = Create(iClass);
+            if oNewMercenary <> $
+            {
+               Send(oNewMercenary,@BindMaster,#oMaster=self);
+               Send(poOwner,@NewHold,#what=oNewMercenary,#new_row=piRow,#new_col=piCol);
+            }
+         }
+      }
 
       return;
    }

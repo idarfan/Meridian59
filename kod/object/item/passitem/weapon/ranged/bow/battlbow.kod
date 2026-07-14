@@ -18,17 +18,22 @@ resources:
 
    BattleBow_name_rsc = "battle bow"
    BattleBow_desc_rsc = \
-      "Expertly carved for power, this bow gives you the envious advantage of "
-      "a stronger attack at a sacrifice of accuracy at long ranges.  You should "
-      "only use this bow at closer ranges."
+      "Expertly carved for power, this bow hits devastatingly hard at any "
+      "range, near or far."
 
 classvars:
 
    vrName = BattleBow_name_rsc
    vrDesc = BattleBow_desc_rsc
 
-   viWeaponDamage = 2
-   viRange = 17
+   % Local server customization: was viWeaponDamage=2, viRange=17 -- this
+   % bow was originally a short-range/high-damage tradeoff weapon. Bumped
+   % both up since the engine has no distance-based damage falloff anyway
+   % (GetRange() is purely a hit/no-hit cutoff, see weapon.kod/ranged.kod),
+   % so there was never a real "close range = more damage" trade to begin
+   % with -- just an artificially short max range.
+   viWeaponDamage = 50
+   viRange = 200
    viHit_roll_modifier = 0
    
    viValue_average = 3000
