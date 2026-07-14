@@ -35,7 +35,7 @@ properties:
    prRoom = room_barloqueport
    piRoom_num = RID_BAR_PORT
 
-   piBaseLight = LIGHT_NICE
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_NICE, set to full brightness so torches aren't needed to see.
 
    prMusic = barloqueport_music
 

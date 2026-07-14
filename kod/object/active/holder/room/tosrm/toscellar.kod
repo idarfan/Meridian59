@@ -36,7 +36,7 @@ properties:
    viTeleport_Row = 9
    viTeleport_Col = 9
 
-   piBaseLight = LIGHT_NICE
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_NICE, set to full brightness so torches aren't needed to see.
 
 messages:
 

@@ -45,7 +45,7 @@ properties:
    prRoom = room_barinn
    piRoom_num = RID_BAR_INN
 
-   piBaseLight = LIGHT_NICE
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_NICE, set to full brightness so torches aren't needed to see.
    piOutside_factor = 3
 
    prMusic = barinn_music

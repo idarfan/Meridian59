@@ -123,7 +123,7 @@ properties:
    prRoom = room_duke5
    piRoom_num = RID_DUKE5
 
-   piBaseLight = LIGHT_NICE
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_NICE, set to full brightness so torches aren't needed to see.
    piOutside_factor = OUTDOORS_SOME
 
    prMusic = duke5_music

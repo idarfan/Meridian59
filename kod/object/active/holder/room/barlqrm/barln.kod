@@ -49,7 +49,7 @@ properties:
    prRoom = room_barloquenorth
    piRoom_num = RID_BAR_NORTH
 
-   piBaseLight = LIGHT_NICE
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_NICE, set to full brightness so torches aren't needed to see.
 
    piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
 

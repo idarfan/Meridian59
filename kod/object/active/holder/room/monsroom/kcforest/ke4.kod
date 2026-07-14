@@ -86,7 +86,7 @@ properties:
    prMusic = OutdoorsKE4_music
    piRoom_num = RID_KE4
 
-   piBaseLight = LIGHT_NICE
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_NICE, set to full brightness so torches aren't needed to see.
    piOutside_factor = 8
 
    piDirectional_percent = 70

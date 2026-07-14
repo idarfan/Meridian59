@@ -43,7 +43,7 @@ properties:
    prRoom = room_tos
    piRoom_num = RID_TOS
 
-   piBaseLight = ((LIGHT_MAX+LIGHT_NICE)/2)
+   piBaseLight = LIGHT_MAX  % Local server customization: was ((LIGHT_MAX+LIGHT_NICE)/2), set to full brightness so torches aren't needed to see.
 
    piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
 

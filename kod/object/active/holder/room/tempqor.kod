@@ -41,7 +41,7 @@ properties:
    piRoom_num = RID_TEMPLE_QOR
    prMusic = tempqor_music
 
-   piBaseLight = LIGHT_NICE
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_NICE, set to full brightness so torches aren't needed to see.
    piOutside_factor = 3
 
    piCurrentExit = RID_I8

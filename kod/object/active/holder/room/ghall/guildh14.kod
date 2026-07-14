@@ -171,7 +171,7 @@ properties:
    prRoom = room_guildh14
    piRoom_num = RID_GUILDH14
 
-   piBaseLight = LIGHT_NICE
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_NICE, set to full brightness so torches aren't needed to see.
    piOutside_factor = OUTDOORS_5
 
    ptSecret = $

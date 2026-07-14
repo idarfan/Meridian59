@@ -37,7 +37,7 @@ properties:
    prRoom = room_marsmith
    piRoom_num = RID_MAR_SMITHY
 
-   piBaseLight = LIGHT_NICE
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_NICE, set to full brightness so torches aren't needed to see.
    piOutside_factor = OUTDOORS_SOME
 
    prMusic = marsmith_music

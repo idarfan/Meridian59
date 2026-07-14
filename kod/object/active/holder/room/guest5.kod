@@ -56,7 +56,7 @@ properties:
    prRoom = room_guest5
    piRoom_num = RID_guest5
 
-   piBaseLight = LIGHT_NICE
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_NICE, set to full brightness so torches aren't needed to see.
    piOutside_factor = OUTDOORS_SOME
 
    prMusic = guest5_music

@@ -76,7 +76,7 @@ properties:
 
    prMusic = NecArena_music
 
-   piBaseLight = LIGHT_NICE
+   piBaseLight = LIGHT_MAX  % Local server customization: was LIGHT_NICE, set to full brightness so torches aren't needed to see.
    piOutside_factor = 5
 
    piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
