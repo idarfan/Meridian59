@@ -403,6 +403,28 @@ properties:
 
 messages:
 
+   RelightAllRooms()
+   "Local server customization: one-shot admin utility to force every "
+   "already-existing (persisted) room object's piBaseLight up to LIGHT_MAX. "
+   "Editing a room's .kod source only changes the default for NEWLY created "
+   "rooms -- it does not retroactively update rooms that already exist in "
+   "the live/saved game world, since piBaseLight is a per-instance property, "
+   "not something re-read from the class each reload. Call once via the "
+   "maintenance console (send object 0 RelightAllRooms) after a brightness "
+   "change to sync existing rooms."
+   {
+      local i, iCount;
+
+      iCount = 0;
+      for i in plRooms
+      {
+         Send(i,@SetBaseLight,#amount=LIGHT_MAX);
+         iCount = iCount + 1;
+      }
+
+      return iCount;
+   }
+
    GetName()
    {
       return system_name_rsc;
