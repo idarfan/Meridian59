@@ -194,6 +194,13 @@ messages:
          ptLeash = CreateTimer(self,@LeashTimer,MERC_LEASH_INTERVAL);
       }
 
+      % Local server customization: let the master track us, both to avoid
+      % double-summoning and to remember which class to auto-resummon.
+      if IsClass(oMaster,&Player)
+      {
+         Send(oMaster,@RememberMercenary,#oMercenary=self);
+      }
+
       return TRUE;
    }
 
@@ -507,7 +514,10 @@ messages:
    }
 
    Delete()
-   "Clean up our own timers so they don't fire against a deleted object."
+   "Clean up our own timers so they don't fire against a deleted object. "
+   "Local server customization: also clear our master's poCurrentMercenary "
+   "back-reference (but leave poLastMercenaryClass alone) so "
+   "Player.AutoResummonMercenary knows to summon a replacement next login."
    {
       if ptLeash <> $
       {
@@ -519,6 +529,11 @@ messages:
       {
          DeleteTimer(ptMana);
          ptMana = $;
+      }
+
+      if poMaster <> $
+      {
+         Send(poMaster,@RememberMercenary,#oMercenary=$);
       }
 
       propagate;

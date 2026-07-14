@@ -750,6 +750,13 @@ properties:
    poKill_target = $
    piGain_chance = 0
 
+   % Local server customization: tracks the player's currently-bound
+   % mercenary (so we don't summon a duplicate) and which mercenary class
+   % to auto-resummon with on next login if the current one is gone
+   % (killed, or never resummoned after a reload -- see MERCENARY_SPEC.md).
+   poCurrentMercenary = $
+   poLastMercenaryClass = $
+
    % Flags for various character attributes.
    piFlags = 0
    piFlags2 = 0
@@ -1824,10 +1831,57 @@ messages:
       return;
    }
 
+   RememberMercenary(oMercenary = $)
+   "Local server customization: called by Mercenary.BindMaster so we track "
+   "our currently-bound mercenary and remember its class for auto-resummon "
+   "on next login."
+   {
+      poCurrentMercenary = oMercenary;
+
+      if oMercenary <> $
+      {
+         poLastMercenaryClass = GetClass(oMercenary);
+      }
+
+      return;
+   }
+
+   AutoResummonMercenary()
+   "Local server customization: if we had a mercenary bound before (killed, "
+   "or lost to a reload -- see MERCENARY_SPEC.md) and don't currently have "
+   "a live one, summon a fresh one of the same class and rebind it. Called "
+   "from UserLogonHook."
+   {
+      local oNewMercenary;
+
+      if poLastMercenaryClass = $
+      {
+         return;
+      }
+
+      % poCurrentMercenary is cleared by Mercenary.Delete() (killed, or
+      % explicitly removed), so a non-$ value here means it's still alive.
+      if poCurrentMercenary <> $
+      {
+         return;
+      }
+
+      oNewMercenary = Create(poLastMercenaryClass);
+      if oNewMercenary = $
+      {
+         return;
+      }
+
+      Send(oNewMercenary,@BindMaster,#oMaster=self);
+      Send(poOwner,@NewHold,#what=oNewMercenary,#new_row=piRow,#new_col=piCol);
+
+      return;
+   }
+
    UserLogonHook()
    {
       local i, oGame, oCaramo, oRoom;
-      
+
       for i in plPassive
       {
          Send(i,@UserLogon);
@@ -1896,6 +1950,10 @@ messages:
       % We used to do this when the mana nodes changed, but iterating
       % over all players became far too expensive.
       Send(self,@ComputeMaxMana);
+
+      % Local server customization: auto-resummon our mercenary if it was
+      % killed or otherwise lost since we last logged on.
+      Send(self,@AutoResummonMercenary);
 
       % Tell others that we're here
       oRoom = Send(self, @GetOwner);
