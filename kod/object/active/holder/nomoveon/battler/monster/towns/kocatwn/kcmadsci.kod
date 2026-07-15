@@ -99,11 +99,7 @@ messages:
                        Create(&Longbow),
                        Create(&BattleBow),
                        Create(&MagicBow),
-                       Create(&NeruditeBow),
-                       oArrow,
-                       oSilverArrow,
-                       oNeruditeArrow,
-                       oFireArrow
+                       Create(&NeruditeBow)
                      ],
                      $,$,
                      [ [ oArrow, 1 ],
