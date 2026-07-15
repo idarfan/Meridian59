@@ -31,7 +31,7 @@ classvars:
    vrDesc = KocatanMadScientist_desc_rsc
    viMerchant_markup = MERCHANT_EXPENSIVE
 
-   viAttributes = MOB_NOFIGHT | MOB_RANDOM | MOB_LISTEN | MOB_NOMOVE | MOB_RECEIVE
+   viAttributes = MOB_NOFIGHT | MOB_SELLER | MOB_RANDOM | MOB_LISTEN | MOB_NOMOVE | MOB_RECEIVE
    viOccupation = MOB_ROLE_WIZARD
 
 properties:
@@ -79,6 +79,23 @@ messages:
       Post(poOwner,@SomeoneSaid,#what = self, #string=KocatanMadScientist_entry_welcome,
          #type = SAY_RESOURCE);
 
+      return;
+   }
+
+   SetForSale()
+   {
+      plFor_sale = [ [ Create(&PracticeBow),
+                       Create(&Longbow),
+                       Create(&BattleBow),
+                       Create(&MagicBow),
+                       Create(&NeruditeBow),
+                       Create(&Arrow),
+                       Create(&SilverArrow),
+                       Create(&NeruditeArrow),
+                       Create(&FireArrow)
+                     ],
+                     $,$,$
+                   ];
       return;
    }
 
