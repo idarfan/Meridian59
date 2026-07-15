@@ -34,6 +34,10 @@ classvars:
    viAttributes = MOB_NOFIGHT | MOB_SELLER | MOB_RANDOM | MOB_LISTEN | MOB_NOMOVE | MOB_RECEIVE
    viOccupation = MOB_ROLE_WIZARD
 
+   % Lets a single purchase go up to the arrow stack's piNumber (9999)
+   % instead of the default MAX_BUY_AMOUNT (500) cap.
+   vbSellFromInventory = TRUE
+
 properties:
    
 messages:
@@ -84,17 +88,29 @@ messages:
 
    SetForSale()
    {
+      local oArrow, oSilverArrow, oNeruditeArrow, oFireArrow;
+
+      oArrow = Create(&Arrow,#number=9999);
+      oSilverArrow = Create(&SilverArrow,#number=9999);
+      oNeruditeArrow = Create(&NeruditeArrow,#number=9999);
+      oFireArrow = Create(&FireArrow,#number=9999);
+
       plFor_sale = [ [ Create(&PracticeBow),
                        Create(&Longbow),
                        Create(&BattleBow),
                        Create(&MagicBow),
                        Create(&NeruditeBow),
-                       Create(&Arrow),
-                       Create(&SilverArrow),
-                       Create(&NeruditeArrow),
-                       Create(&FireArrow)
+                       oArrow,
+                       oSilverArrow,
+                       oNeruditeArrow,
+                       oFireArrow
                      ],
-                     $,$,$
+                     $,$,
+                     [ [ oArrow, 1 ],
+                       [ oSilverArrow, 1 ],
+                       [ oNeruditeArrow, 1 ],
+                       [ oFireArrow, 1 ]
+                     ]
                    ];
       return;
    }
