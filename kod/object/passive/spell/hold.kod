@@ -14,13 +14,14 @@ constants:
 
    include blakston.khd
 
-   % Local server customization: Hold/Root duration is permanent (well
-   % under the ~24.8-day int32 millisecond ceiling, so CreateTimer/
-   % StartEnchantment don't overflow -- for all practical play purposes
-   % this never expires on its own).
-   HOLD_PERMANENT_DURATION = 2000000000
+   % Local server customization: Hold/Root duration is fixed at 45 seconds,
+   % regardless of spellpower.
+   HOLD_PERMANENT_DURATION = 45000
 
 resources:
+
+   % Local server customization: this character name is immune to Hold/Root.
+   hold_immune_name_rsc = "ohmy"
 
    hold_name_rsc = "hold"
    hold_icon_rsc = ihold.bgf
@@ -86,6 +87,18 @@ messages:
       }
 
       target = First(lTargets);
+      if IsClass(target,&Player) AND StringEqual(Send(target,@GetTrueName),hold_immune_name_rsc)
+      {
+         if NOT bItemCast
+         {
+            Send(who, @MsgSendUser, #message_rsc=spell_bad_target,
+                 #parm1=vrName,#parm2=Send(target,@GetDef),
+                 #parm3=Send(target,@GetName));
+         }
+
+         return FALSE;
+      }
+
       if NOT IsClass(target, &Battler) OR IsClass(target,&Revenant)
       {
          if not bItemCast
@@ -201,9 +214,8 @@ messages:
    } 
 
    GetDuration(iSpellPower = 0)
-   "Local server customization: permanent duration, ignoring spellpower "
-   "entirely.  Original 2-6 second formula below is dead code, kept for "
-   "reference in case this override needs to be reverted."
+   "Local server customization: fixed 45-second duration, ignoring "
+   "spellpower entirely."
    {
       return HOLD_PERMANENT_DURATION;
    }
@@ -219,14 +231,19 @@ messages:
          return FALSE;
       }
 
+      if IsClass(otarget,&Player) AND StringEqual(Send(otarget,@GetTrueName),hold_immune_name_rsc)
+      {
+         return FALSE;
+      }
+
       % check for enchantment already applied
       if Send(otarget,@IsEnchanted,#what=self)
       {
          return FALSE;
       }
 
-      % Local server customization: always permanent, regardless of what
-      % the caller asked for (iDuration/iDurationSecs are now ignored).
+      % Local server customization: always fixed at 45 seconds, regardless
+      % of what the caller asked for (iDuration/iDurationSecs are ignored).
       iTotalDuration = HOLD_PERMANENT_DURATION;
 
       % check if the target has free action unless not allowed
